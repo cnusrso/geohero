@@ -1,0 +1,46 @@
+.dropmenu {
+    z-index:			200000;
+    position:			absolute;
+    display:			none;
+    border:				solid 1px WindowFrame;
+    background-color:	white;
+    box-shadow:			0 .2em .4em rgba(0, 0, 0, .25);
+    -moz-box-shadow:	0 .2em .4em rgba(0, 0, 0, .25);
+    -webkit-box-shadow:	0 .2em .4em rgba(0, 0, 0, .25);
+}
+
+.dropdown-content {
+	min-height:			1.4em;		/* height + padding-top + padding-bottom of .dropmenu-item */
+	max-height:			42em;		/* 5 * min-height */
+    min-width:			1em;
+	max-width:			25em;
+	overflow:			hidden;
+	overflow-y:			auto;
+}
+
+.dropmenu-item {
+    padding:			.2em .4em;
+	overflow:			hidden;
+	white-space:		nowrap;
+    text-overflow:		ellipsis;
+	color:				GrayText;
+}
+
+.dropmenu-item:hover {
+	background-color:	Scrollbar;
+}
+
+.dropmenu-item.dropmenu-selectable {
+	color:				MenuText;
+	cursor:				pointer;
+}
+
+.dropmenu-item.dropmenu-selectable:hover {
+    background-color:	Highlight;
+    color:				HighlightText;
+}
+
+.dropmenu-parent {
+    padding-right:		15px;
+    background:			url('images/parent.png') no-repeat 98% 50%;
+}
