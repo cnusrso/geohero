@@ -516,9 +516,9 @@ function entryFun( ) {
 				console.info(item); 
 				if(item.name == 'Newest10')
 				{
-					
+					console.log("will open top 10 poi!");
 				}
-				else if(item.name == 'Go to My Location')
+				else if(item.name == 'Goto My Location')
 				{
 					var curlat = Number(localStorage.getItem("last_lat"))
 					var curlng = Number(localStorage.getItem("last_lng"))
