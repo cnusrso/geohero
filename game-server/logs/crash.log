@@ -1,0 +1,8 @@
+[2016-04-05 11:54:48.161] [INFO] crash-log - [32m[/home/cabox/workspace/geohero_amap/game-server/node_modules/pomelo/lib/master/master.js] [39m[client],[pomelo_list_1459871688068],[1459871688161],[disconnect]
+[2016-04-05 13:10:09.856] [INFO] crash-log - [32m[/home/cabox/workspace/geohero_amap/game-server/node_modules/pomelo/lib/master/master.js] [39m[client],[pomelo_list_1459876209774],[1459876209856],[disconnect]
+[2016-04-05 13:10:35.309] [INFO] crash-log - [32m[/home/cabox/workspace/geohero_amap/game-server/node_modules/pomelo/lib/master/master.js] [39m[client],[pomelo_terminal_1459876235227],[1459876235309],[disconnect]
+[2016-04-05 13:11:19.622] [INFO] crash-log - [32m[/home/cabox/workspace/geohero_amap/game-server/node_modules/pomelo/lib/master/master.js] [39m[connector],[connector-server-1],[1459876279622],[disconnect]
+[2016-04-28 12:07:54.404] [INFO] crash-log - [32m[/home/cabox/workspace/geohero_amap/game-server/node_modules/pomelo/lib/master/master.js] [39m[client],[pomelo_list_1461859674250],[1461859674404],[disconnect]
+[2016-04-28 12:27:44.292] [INFO] crash-log - [32m[/home/cabox/workspace/geohero_amap/game-server/node_modules/pomelo/lib/master/master.js] [39m[client],[pomelo_list_1461860864215],[1461860864292],[disconnect]
+[2016-04-28 12:27:49.159] [INFO] crash-log - [32m[/home/cabox/workspace/geohero_amap/game-server/node_modules/pomelo/lib/master/master.js] [39m[connector],[connector-server-1],[1461860869159],[disconnect]
+[2016-05-03 13:32:52.112] [INFO] crash-log - [32m[/home/cabox/workspace/geohero_amap/game-server/node_modules/pomelo/lib/master/master.js] [39m[connector],[connector-server-1],[1462296772112],[disconnect]

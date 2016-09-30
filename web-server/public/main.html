@@ -1,0 +1,133 @@
+<!doctype html>
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
+	<title>geohero</title>
+	<link rel="shortcut icon" type="image/ico" href="image/myico.ico">
+	<link rel="icon" type="image/ico" href="image/myico.ico" sizes="16x16 32x32 64x64 128x128">
+	
+</head>
+
+<body>
+	<div id="container" tabindex="0">
+	</div>
+	
+	
+	<div id="loadingpage"></div>
+	
+	<button id="btn-Account" class="ui-button ui-widget ui-corner-all" style="display: none;">未登录</button>
+	
+	<button id="btn-Move" class="ui-button ui-widget ui-corner-all" style="display: none;">行色匆匆</button>
+	
+	<div id="dialog-SignIn" style="display:none">
+		<form>
+			<fieldset>
+				<label for="account">Account</label>
+				<input type="text" name="signin_account" id="signin_account" placeholder="type your account" maxlength="32" class="text ui-widget-content ui-corner-all">
+				<label for="password">Password</label>
+				<input type="password" name="signin_password" id="signin_password" placeholder="type your password" maxlength="32" class="text ui-widget-content ui-corner-all">
+			</fieldset>
+		</form>
+	</div>
+
+	<div id="dialog-SignUp" title="Sign Up" style="display:none">
+		<form>
+			<fieldset>
+				<label for="account">Account</label>
+				<input type="text" name="register_account" id="register_account" placeholder="type your account" maxlength="32" class="text ui-widget-content ui-corner-all">
+				<label for="password">Password</label>
+				<input type="password" name="register_password" id="register_password" placeholder="type your password" maxlength="32" class="text ui-widget-content ui-corner-all">
+				<label for="password">Again Password</label>
+				<input type="password" name="register_againpassword" id="register_againpassword" placeholder="type your password again" maxlength="32" class="text ui-widget-content ui-corner-all">
+			</fieldset>
+		</form>
+	</div>
+	
+	<ul class="menu" id="maincirclemenu" style="display:none">
+		<li><a href="#"></a></li>
+		<li id="1" ><a href="#" alt="Item 1" title="teleport"  style='color:#ff1010'>teleport</a></li>
+		<li id="2" ><a href="#" alt="Item 2" title="move to"  style='color:#ff1010'>move</a></li>
+		<li id="3" ><a href="#" alt="Item 3" title="query info"  style='color:#ff1010'>query</a></li>
+		<li id="4" ><a href="#" alt="Item 4" title="goto my location"  style='color:#ff1010'>location</a></li>
+		<li id="5" ><a href="#" alt="Item 5" title="change map to satellite"  style='color:#ff1010'>satellite</a></li>
+		<li id="6" ><a href="#" alt="Item 6" title="jump to here"  style='color:#ff1010'>jump</a></li>
+	</ul>
+
+	<div id="dialog-SelectBirthPos" style="display:none">
+		<form>
+			<fieldset>
+				<label for="account">Select Pos</label>
+			</fieldset>
+		</form>
+	</div>
+	
+	<div id="dialog-CommonChoose" style="display:none">
+		<form>
+			<fieldset>
+				<label id="CommonChoose_Content">Select Pos</label>
+			</fieldset>
+		</form>
+	</div>
+	
+	
+	
+<!-- 	always in bottom -->
+	<script src="js/lib/sonic.js"></script>
+	<script>
+		var winWidth=document.body.clientWidth||document.documentElement.clientWidth
+		var winHeight=document.body.clientHeight||document.documentElement.clientHeight
+		var center={x:winWidth/2,y:winHeight/2};
+		console.log("aaaa",center);
+		
+		var circle = new Sonic({
+			width: winWidth,
+			height: winHeight,
+			padding: 0,
+			strokeColor: '#4B0082',
+			pointDistance: .01,
+			stepsPerFrame: 3,
+			trailLength: .7,
+			step: 'fader',
+			setup: function() {
+				this._.lineWidth = 10;
+			},
+			path: [
+				['arc', center.x, center.y, center.x/5, 0, 360]
+			]
+		});
+		circle.play();
+		var ploadingpage = document.getElementById("loadingpage");
+		ploadingpage.appendChild(circle.canvas);
+
+	</script>
+	
+	<!-- amap libs -->
+	<link rel="stylesheet" href="http://cache.amap.com/lbs/static/main1119.css" />
+	<!--     <script src="http://webapi.amap.com/maps?v=1.3&key=957606db3c3518da4a5dda76d1641008"></script> -->
+	<!-- 	<script src="http://webapi.amap.com/maps?v=1.3&key=8a385884899dc9937cae3e807a55cdb6"></script> -->
+
+	<!-- jquery ui -->
+<!-- 	<link rel="stylesheet" href="http://ajax.aspnetcdn.com/ajax/jquery.ui/1.11.4/themes/pepper-grinder/jquery-ui.css" /> -->
+		<link rel="stylesheet" href="js/lib/jquery-ui-1.12.0.custom/jquery-ui.min.css" />
+	
+	<!-- pnotify -->
+	<!-- 	<script type="text/javascript" src="js/lib/pnotify.custom.min.js"></script> -->
+	<link href="js/lib/pnotify.custom.min.css" media="all" rel="stylesheet" type="text/css" />
+	
+	<!-- 	dropmenu -->
+	<link href="js/lib/dropmenu/jquery.dropmenu.css" rel="stylesheet" type="text/css"/>
+	
+	<!-- 	circlemenu -->
+	<link href="js/lib/circlemenu/circlemenu.css" rel="stylesheet" type="text/css"/>
+	
+	<!-- pomelo script -->
+	<script src="js/lib/build.js" type="text/javascript"></script>
+	<script type="text/javascript">REQUIRE('boot');</script>
+	
+	<script src="js/lib/require.js" defer async="true" data-main="js/source/main"></script>
+</body>
+
+</html>

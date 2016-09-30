@@ -1,0 +1,244 @@
+// wrap amap...
+define(["amap"], {
+	maper: null,
+	zoom: 11,
+	center: {
+		lng: 116.397428,
+		lat: 39.90923
+	},
+
+	placeSearch: null,
+	pGeolocation: null,
+	pGeoCoder:null,
+	bOnGeoLocation: false,
+	
+	pWalkingService: null,
+	
+	
+	pFuncClickCallback: null,
+	pFuncClickCallbackOwner:null,
+
+	init: function(sContainerName) {
+
+
+		this.maper = new AMap.Map(sContainerName, {
+			resizeEnable: true,
+			isHotspot: true 
+		});
+
+		var singleton = this;
+
+		//构造地点查询类
+		AMap.service(["AMap.PlaceSearch"], function() {
+			singleton.placeSearch = new AMap.PlaceSearch({ 
+				pageSize: 5,
+				pageIndex: 1,
+				map: singleton.maper
+			});
+		});
+		// 坐标转详细地址类
+		AMap.service(["AMap.Geocoder"], function() {
+			singleton.pGeoCoder = new AMap.Geocoder({
+						city: "全国",
+            radius: 500,
+            extensions: "base"
+        });
+		});
+		//构造步行导航服务类
+		AMap.service(["AMap.Walking"], function() {
+			singleton.pWalkingService = new AMap.Walking({ 
+				map: singleton.maper,
+				hideMarkers: false
+			});
+		});
+		
+
+		this.maper.on('click', function(e) {
+			console.log(e);
+			if(singleton.pFuncClickCallback != null)
+				{
+					if(singleton.pFuncClickCallbackOwner != null)
+						singleton.pFuncClickCallback.call(singleton.pFuncClickCallbackOwner,"click",e);
+					else
+						singleton.pFuncClickCallback.call("click",e);	
+				}
+    });
+		this.maper.on('hotspotclick', function(result) {
+			console.log("poi search begin:", result);
+			if(singleton.pFuncClickCallback != null)
+				{
+					if(singleton.pFuncClickCallbackOwner != null)
+						singleton.pFuncClickCallback.call(singleton.pFuncClickCallbackOwner,"hotspotclick",result);
+					else
+						singleton.pFuncClickCallback.call("hotspotclick",result);	
+				}
+			
+// 			singleton.placeSearch.getDetails(result.id, function(status, result) {
+// 				if (status === 'complete' && result.info === 'OK') {
+// 					console.log("poi details:", result);
+// 				} else {
+// 					console.log("poi details failed:", status, result);
+// 				}
+// 			});
+		});
+		this.maper.on('movestart', function(e) {
+			console.log(e);
+			if(singleton.pFuncClickCallback != null)
+				{
+					if(singleton.pFuncClickCallbackOwner != null)
+						singleton.pFuncClickCallback.call(singleton.pFuncClickCallbackOwner,"movestart",e);
+					else
+						singleton.pFuncClickCallback.call("movestart",e);	
+				}
+    });
+		this.maper.on('zoomstart', function(e) {
+			console.log(e);
+			if(singleton.pFuncClickCallback != null)
+				{
+					if(singleton.pFuncClickCallbackOwner != null)
+						singleton.pFuncClickCallback.call(singleton.pFuncClickCallbackOwner,"zoomstart",e);
+					else
+						singleton.pFuncClickCallback.call("zoomstart",e);	
+				}
+    });
+		
+
+
+		this.maper.plugin('AMap.Geolocation', function() {
+			singleton.pGeolocation = new AMap.Geolocation({
+				enableHighAccuracy: true, //是否使用高精度定位，默认:true
+				timeout: 10000, //超过10秒后停止定位，默认：无穷大
+				buttonOffset: new AMap.Pixel(10, 20), //定位按钮与设置的停靠位置的偏移量，默认：Pixel(10, 20)
+				zoomToAccuracy: true, //定位成功后调整地图视野范围使定位位置及精度范围视野内可见，默认：false
+				buttonPosition: 'RB'
+			});
+			
+		});
+		
+		
+
+
+	},
+
+	setClickCallbackData:function(pCallback,pCallbackOwner) {
+		this.pFuncClickCallback = pCallback;
+		this.pFuncClickCallbackOwner = pCallbackOwner;
+		
+	},
+	
+	startGetWalkingData: function(from,to,pCallback,pCallbackOwner){
+		var singleton = this;
+		this.pWalkingService.search(from,to,function(status,result){
+			
+			if(singleton.pCallback != null)
+				{
+					if(singleton.pCallbackOwner != null)
+						singleton.pCallback.call(singleton.pCallbackOwner,status,result);
+					else
+						singleton.pCallback.call(status,result);	
+				}
+			
+		})
+	},
+	
+	startGetCurrentPosition: function(pCallback, CallbackOwner) {
+		var singleton = this;
+		AMap.event.addListenerOnce(this.pGeolocation, 'complete', function(data) {
+// 			var str = ['定位成功'];
+// 			str.push('经度：' + data.position.getLng());
+// 			str.push('纬度：' + data.position.getLat());
+// 			str.push('精度：' + data.accuracy + ' 米');
+// 			str.push('是否经过偏移：' + (data.isConverted ? '是' : '否'));
+// 			console.log("geolocation:" + str);
+			
+			// 由位置得到详细信息
+			singleton.pGeoCoder.getAddress(data.position, function(status, result) {
+				if (status === 'complete' && result.info === 'OK') {
+					singleton.bOnGeoLocation = false;
+					if (pCallback != null && CallbackOwner != null) {
+						pCallback.call(CallbackOwner, "complete", data,result);
+					}
+				}
+			});
+			
+		}); //返回定位信息
+		
+		AMap.event.addListenerOnce(this.pGeolocation, 'error', function(data) {
+			singleton.bOnGeoLocation = false;
+			if(pCallback != null && CallbackOwner != null)
+			{
+				pCallback.call(CallbackOwner, "error", data);
+			}
+		}); //返回定位出错信息
+		
+		this.pGeolocation.getCurrentPosition();
+		this.bOnGeoLocation = true;
+	},
+	
+	StepMove:function(lngstep,latstep)
+	{
+		this.maper.panTo(this.maper.getCenter().offset(lngstep,latstep));
+	},
+	
+	
+	panTo:function(pos)
+	{
+		this.maper.panTo(pos);
+		this.maper.setZoom(15);
+		
+// 		var singleton = this;
+// 		var timercount = 5;
+// 		var timernum = 0;
+// 		var mytimermove = _gdata.model_jq.timer(
+// 			function(){
+// 				timernum++;
+// 				if(timernum >= timercount)
+// 					{
+// 						mytimermove.stop();
+// 						mytimermove = null;
+// 					}
+				
+// 				singleton.maper.zoomIn();
+// 			},
+// 			200,
+// 			true
+// 		);
+		
+	},
+
+	addMarker:function(pos,szLabel,pCallback, CallbackOwner)
+	{
+		var pMarker = new AMap.Marker({
+					map: this.maper,
+					position: pos,
+					icon: "http://webapi.amap.com/theme/v1.3/markers/n/mark_b.png",
+					draggable: true,
+					cursor: 'move',
+					raiseOnDrag: true,
+					clickable: true
+			});
+		pMarker.setLabel({
+				offset: new AMap.Pixel(20, 20),//修改label相对于maker的位置
+				content: szLabel
+		});
+		
+		// 处理点击事件
+		AMap.event.addListenerOnce(pMarker, 'click', function(data) {
+			if(pCallback != null && CallbackOwner != null)
+			{
+				pMarker.setMap(null);
+				pCallback.call(CallbackOwner, "click", data);
+			}
+		});
+		AMap.event.addListenerOnce(pMarker, 'touchend', function(data) {
+			if(pCallback != null && CallbackOwner != null)
+			{
+				pMarker.setMap(null);
+				pCallback.call(CallbackOwner, "click", data);
+			}
+		});
+		
+		return pMarker;
+	},
+
+});
