@@ -198,23 +198,23 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
     );
   },
   
-  onTeleportToPosition: function(pData, pDataDetail) {
+  onTeleportToPoi: function(pPoiData) {
     
     _gdata.model_util.BlockMsgShow("Teleport To...");
 
     var singleton = this;
     _gdata.model_netmgr.req_TeleportToPosition(
       _gdata.model_userdata.userdata.acckey,
-      pData.position.getLng(),
-      pData.position.getLat(),
-      pDataDetail.regeocode.formattedAddress,
+      pPoiData.lnglat.getLng(),
+      pPoiData.lnglat.getLat(),
+      pPoiData.name,
       function(data) {
         _gdata.model_util.BlockMsgHide();
         if (data.code == 200) {
           _gdata.model_notify.showNotify("Info", "Teleport Ok");
 
           // show current position marker.
-          _gdata.model_userdata.userdata.curpos = new AMap.LngLat(pData.position.getLng(), pData.position.getLat());
+          _gdata.model_userdata.userdata.curpos = pPoiData.lnglat;
           //_gdata.model_map.panTo(_gdata.model_userdata.userdata.curpos);
           _gdata.model_map.addMarker(_gdata.model_userdata.userdata.curpos, _gdata.model_userdata.userdata.account,
             function(szType, pData) {},
@@ -229,8 +229,8 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
   },
 
   onGetUserDataResult: function(pData) {
-    console.info(pData.data);
-    
+    // console.info(pData.code);
+    var singleton = this;
 
     if (pData.code == 200) {
 
@@ -255,18 +255,33 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
       }
 
     } else {
-      _gdata.model_notify.showNotify("GetUserData Failed", "\" SignIn Failed(" + pData.code + ") " + pData.msg);
-      _gdata.model_notify.showNotify("Info","Let's again!");
-      _gdata.model_netmgr.req_getUserData(_gdata.model_userdata.userdata.acckey, this.onGetUserDataResult, this);
+      console.info("GetUserData again!!",pData);
+      setTimeout(
+        function(){
+          _gdata.model_netmgr.req_getUserData(_gdata.model_userdata.userdata.acckey, singleton.onGetUserDataResult, singleton);
+        },
+        500
+      );
     }
   },
 
 
 
-  onClickInMap: function(sType, pPos) {
+  onMapEvent: function(sType, pPos) {
     var singleton = this;
+    console.log("onMapEvent->",sType,pPos);
 
     if (sType == "click") {
+      // click on map.............................................................................
+      
+    } else if (sType == "movestart") {
+      // begin move map .................................................
+      _gdata.model_jq("#maincirclemenu").circleMenu('close');
+    } else if (sType == "zoomstart") {
+      // begin zoom map ..................................................
+      _gdata.model_jq("#maincirclemenu").circleMenu('close');
+    } else if (sType == "hotspotclick") { 
+      // click one hot point .............................................
       if (gamestate == "selectbirthpt") {
         _gdata.model_map.panTo(pPos.lnglat);
         _gdata.model_map.addMarker(pPos.lnglat, "出生点？",
@@ -319,22 +334,17 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
           }, this);
       } else if (gamestate == "free") {
         _gdata.model_map.panTo(pPos.lnglat);
-        _gdata.model_map.addMarker(pPos.lnglat, "???",
+        _gdata.model_map.addMarker(pPos.lnglat, "???",pPos,
          function(szType, pData) {
            if (szType == "click") {
              
-             console.log("pData:",pData);
-             _gdata.model_jq("#maincirclemenu").offset({ top: pData.pixel.y-16, left: pData.pixel.x-16});
-						  _gdata.model_jq("#maincirclemenu").circleMenu('open');
+            _gdata.model_userdata.setCurSelectPoi(pData);
+            console.log("pData:",pData);
+            _gdata.model_jq("#maincirclemenu").offset({ top: pData.pixel.y-16, left: pData.pixel.x-16});
+            _gdata.model_jq("#maincirclemenu").circleMenu('open');
            }
-         }, singleton);
-        
-        
+         }, singleton);        
       }
-    } else if (sType == "movestart") {
-      _gdata.model_jq("#maincirclemenu").circleMenu('close');
-    } else if (sType == "zoomstart") {
-      _gdata.model_jq("#maincirclemenu").circleMenu('close');
     }
   },
 
@@ -352,11 +362,18 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 
     var singleton = this;
 
-    _gdata.model_map.setClickCallbackData(singleton.onClickInMap, singleton);
+    _gdata.model_map.setEventCallbackData(singleton.onMapEvent, singleton);
     _gdata.model_netmgr.setSystemCallback(singleton.DoNetworkMsg);
     
     _gdata.model_util.BlockMsgShow("Get Last Location");
-    _gdata.model_netmgr.req_getUserData(_gdata.model_userdata.userdata.acckey, this.onGetUserDataResult, this);
+
+    setTimeout(
+      function(){
+        _gdata.model_netmgr.req_getUserData(_gdata.model_userdata.userdata.acckey, singleton.onGetUserDataResult, singleton);
+      },
+      1000
+    );
+    
 
     //     _gdata.model_jq("#btn-Account").click(function(event) {
     //       event.preventDefault();
@@ -439,11 +456,12 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
         
         
         var nBtnId = Number(index[0].id);
+        console.log("aaaaa->",nBtnId);
         switch(nBtnId)
           {
             case 1:
               {
-                
+                singleton.onTeleportToPoi(_gdata.model_userdata.getCurSelectPoi());
 
               }break;
           }
@@ -468,7 +486,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
   closeMe: function(){
     _gdata.model_jq("#btn-Account").off("click");
     
-    _gdata.model_map.setClickCallbackData(null,null);
+    _gdata.model_map.setEventCallbackData(null,null);
     _gdata.model_netmgr.setSystemCallback(null);
     
     _gdata.model_netmgr.disconnectNet();

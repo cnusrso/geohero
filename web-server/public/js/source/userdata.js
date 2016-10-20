@@ -6,6 +6,7 @@ define({
     acckey:"",
     enterTime:0,
 		curpos:null,
+    curselectpoidata:null,
   },
 
   setEnterWorldOk: function(sAccount,sKey){
@@ -14,6 +15,13 @@ define({
     
     var date = new Date();
 	  this.userdata.enterTime = date.getTime();
+  },
+
+  setCurSelectPoi: function(selPoi){
+    this.userdata.curselectpoidata = selPoi;
+  },
+  getCurSelectPoi: function(){
+    return this.userdata.curselectpoidata;
   },
 
 

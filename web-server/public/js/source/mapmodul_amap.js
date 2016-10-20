@@ -15,8 +15,8 @@ define(["amap"], {
 	pWalkingService: null,
 	
 	
-	pFuncClickCallback: null,
-	pFuncClickCallbackOwner:null,
+	pFuncEventCallback: null,
+	pFuncEventCallbackOwner:null,
 
 	init: function(sContainerName) {
 
@@ -54,23 +54,23 @@ define(["amap"], {
 		
 
 		this.maper.on('click', function(e) {
-			console.log(e);
-			if(singleton.pFuncClickCallback != null)
+			// console.log(e);
+			if(singleton.pFuncEventCallback != null)
 				{
-					if(singleton.pFuncClickCallbackOwner != null)
-						singleton.pFuncClickCallback.call(singleton.pFuncClickCallbackOwner,"click",e);
+					if(singleton.pFuncEventCallbackOwner != null)
+						singleton.pFuncEventCallback.call(singleton.pFuncEventCallbackOwner,"click",e);
 					else
-						singleton.pFuncClickCallback.call("click",e);	
+						singleton.pFuncEventCallback.call("click",e);	
 				}
-    });
+    	});
 		this.maper.on('hotspotclick', function(result) {
-			console.log("poi search begin:", result);
-			if(singleton.pFuncClickCallback != null)
+			// console.log("poi search begin:", result);
+			if(singleton.pFuncEventCallback != null)
 				{
-					if(singleton.pFuncClickCallbackOwner != null)
-						singleton.pFuncClickCallback.call(singleton.pFuncClickCallbackOwner,"hotspotclick",result);
+					if(singleton.pFuncEventCallbackOwner != null)
+						singleton.pFuncEventCallback.call(singleton.pFuncEventCallbackOwner,"hotspotclick",result);
 					else
-						singleton.pFuncClickCallback.call("hotspotclick",result);	
+						singleton.pFuncEventCallback.call("hotspotclick",result);	
 				}
 			
 // 			singleton.placeSearch.getDetails(result.id, function(status, result) {
@@ -82,23 +82,23 @@ define(["amap"], {
 // 			});
 		});
 		this.maper.on('movestart', function(e) {
-			console.log(e);
-			if(singleton.pFuncClickCallback != null)
+			// console.log(e);
+			if(singleton.pFuncEventCallback != null)
 				{
-					if(singleton.pFuncClickCallbackOwner != null)
-						singleton.pFuncClickCallback.call(singleton.pFuncClickCallbackOwner,"movestart",e);
+					if(singleton.pFuncEventCallbackOwner != null)
+						singleton.pFuncEventCallback.call(singleton.pFuncEventCallbackOwner,"movestart",e);
 					else
-						singleton.pFuncClickCallback.call("movestart",e);	
+						singleton.pFuncEventCallback.call("movestart",e);	
 				}
     });
 		this.maper.on('zoomstart', function(e) {
-			console.log(e);
-			if(singleton.pFuncClickCallback != null)
+			// console.log(e);
+			if(singleton.pFuncEventCallback != null)
 				{
-					if(singleton.pFuncClickCallbackOwner != null)
-						singleton.pFuncClickCallback.call(singleton.pFuncClickCallbackOwner,"zoomstart",e);
+					if(singleton.pFuncEventCallbackOwner != null)
+						singleton.pFuncEventCallback.call(singleton.pFuncEventCallbackOwner,"zoomstart",e);
 					else
-						singleton.pFuncClickCallback.call("zoomstart",e);	
+						singleton.pFuncEventCallback.call("zoomstart",e);	
 				}
     });
 		
@@ -120,9 +120,9 @@ define(["amap"], {
 
 	},
 
-	setClickCallbackData:function(pCallback,pCallbackOwner) {
-		this.pFuncClickCallback = pCallback;
-		this.pFuncClickCallbackOwner = pCallbackOwner;
+	setEventCallbackData:function(pCallback,pCallbackOwner) {
+		this.pFuncEventCallback = pCallback;
+		this.pFuncEventCallbackOwner = pCallbackOwner;
 		
 	},
 	
@@ -206,35 +206,41 @@ define(["amap"], {
 		
 	},
 
-	addMarker:function(pos,szLabel,pCallback, CallbackOwner)
+	addMarker:function(pos,szLabel,pExtData,pCallback, CallbackOwner)
 	{
 		var pMarker = new AMap.Marker({
 					map: this.maper,
 					position: pos,
 					icon: "http://webapi.amap.com/theme/v1.3/markers/n/mark_b.png",
-					draggable: true,
+					draggable: false,
 					cursor: 'move',
-					raiseOnDrag: true,
+					raiseOnDrag: false,
 					clickable: true
 			});
+		//pMarker.setTitle(szLabel);
 		pMarker.setLabel({
 				offset: new AMap.Pixel(20, 20),//修改label相对于maker的位置
 				content: szLabel
 		});
+		pMarker.setExtData(pExtData);
 		
 		// 处理点击事件
 		AMap.event.addListenerOnce(pMarker, 'click', function(data) {
 			if(pCallback != null && CallbackOwner != null)
 			{
+				var extdata = pMarker.getExtData();
+				extdata.pixel = data.pixel;
 				pMarker.setMap(null);
-				pCallback.call(CallbackOwner, "click", data);
+				pCallback.call(CallbackOwner, "click", extdata);
 			}
 		});
 		AMap.event.addListenerOnce(pMarker, 'touchend', function(data) {
 			if(pCallback != null && CallbackOwner != null)
 			{
+				var extdata = pMarker.getExtData();
+				extdata.pixel = data.pixel;
 				pMarker.setMap(null);
-				pCallback.call(CallbackOwner, "click", data);
+				pCallback.call(CallbackOwner, "click", extdata);
 			}
 		});
 		
