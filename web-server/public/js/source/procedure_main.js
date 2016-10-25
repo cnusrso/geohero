@@ -137,13 +137,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
       //       _gdata.model_map.addMarker(
       //         pData.position,
       //         pDataDetail.regeocode.formattedAddress,
-      //         function(pData){
-      //           _gdata.model_notify.showNotify("Info", "设置初始地点中。。。");
-
-      //           // use this position as first birth pos.
-
-      //         },
-      //         this);
+      //         pData);
 
       //       var pMarker = new AMap.Marker({
       //             map: _gdata.model_map.maper,
@@ -186,9 +180,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
           // show current position marker.
           _gdata.model_userdata.userdata.curpos = new AMap.LngLat(pData.position.getLng(), pData.position.getLat());
           _gdata.model_map.panTo(_gdata.model_userdata.userdata.curpos);
-          _gdata.model_map.addMarker(_gdata.model_userdata.userdata.curpos, _gdata.model_userdata.userdata.account,
-            function(szType, pData) {},
-            this);
+          _gdata.model_map.addMarker(_gdata.model_userdata.userdata.curpos, _gdata.model_userdata.userdata.account,_gdata.model_userdata.userdata.curpos);
 
         } else {
           _gdata.model_notify.showNotify("Info", "Birth Position Set Failed");
@@ -216,9 +208,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
           // show current position marker.
           _gdata.model_userdata.userdata.curpos = pPoiData.lnglat;
           //_gdata.model_map.panTo(_gdata.model_userdata.userdata.curpos);
-          _gdata.model_map.addMarker(_gdata.model_userdata.userdata.curpos, _gdata.model_userdata.userdata.account,
-            function(szType, pData) {},
-            this);
+          _gdata.model_map.addMarker(_gdata.model_userdata.userdata.curpos, _gdata.model_userdata.userdata.account,pPoiData.lnglat);
 
         } else {
           _gdata.model_notify.showNotify("Info", "Teleport Failed");
@@ -248,14 +238,12 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
         var posarray = pData.data._location.split(',');
         _gdata.model_userdata.userdata.curpos = new AMap.LngLat(parseFloat(posarray[0]), parseFloat(posarray[1]));
         _gdata.model_map.panTo(_gdata.model_userdata.userdata.curpos);
-        _gdata.model_map.addMarker(_gdata.model_userdata.userdata.curpos, _gdata.model_userdata.userdata.account,
-          function(szType, pData) {
-
-          }, this);
+        _gdata.model_map.zoomTo(15);
+        _gdata.model_map.addMarker(_gdata.model_userdata.userdata.curpos, _gdata.model_userdata.userdata.account,_gdata.model_userdata.userdata.curpos);
       }
 
     } else {
-      console.info("GetUserData again!!",pData);
+      console.warn("GetUserData again!!",pData);
       setTimeout(
         function(){
           _gdata.model_netmgr.req_getUserData(_gdata.model_userdata.userdata.acckey, singleton.onGetUserDataResult, singleton);
@@ -284,67 +272,70 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
       // click one hot point .............................................
       if (gamestate == "selectbirthpt") {
         _gdata.model_map.panTo(pPos.lnglat);
-        _gdata.model_map.addMarker(pPos.lnglat, "出生点？",
-          function(szType, pData) {
-            if (szType == "click") {
-
-              _gdata.model_jq("#CommonChoose_Content").html("使用这个位置作为出生点么？");
-              _gdata.model_jq("#dialog-CommonChoose").dialog({
-                autoOpen: false,
-                modal: true,
-                resizable: false,
-                draggable: true,
-                show: {
-                  effect: "blind",
-                  duration: 800
-                },
-                closeOnEscape: false,
-                dialogClass: "noclose",
-                title: "提示",
-                buttons: [{
-                  text: "是的",
-                  icons: {
-                    primary: "ui-icon-arrowthick-1-e"
-                  },
-                  click: function() {
-                    _gdata.model_jq("#dialog-CommonChoose").dialog("close");
-
-                    singleton.onSetBirthPosition({
-                      position: pPos.lnglat
-                    }, {
-                      regeocode: {
-                        formattedAddress: "aaaa"
-                      }
-                    });
-
-                  }
-                }, {
-                  text: "放弃",
-                  icons: {
-                    primary: "ui-icon-arrowreturnthick-1-w"
-                  },
-                  click: function() {
-                    _gdata.model_jq("#dialog-CommonChoose").dialog("close");
-                  }
-                }]
-              });
-              _gdata.model_jq("#dialog-CommonChoose").dialog("open");
-
-            }
-          }, this);
+        _gdata.model_map.addMarker(pPos.lnglat, "出生点？",pPos);
       } else if (gamestate == "free") {
         _gdata.model_map.panTo(pPos.lnglat);
-        _gdata.model_map.addMarker(pPos.lnglat, "???",pPos,
-         function(szType, pData) {
-           if (szType == "click") {
-             
-            _gdata.model_userdata.setCurSelectPoi(pData);
-            console.log("pData:",pData);
-            _gdata.model_jq("#maincirclemenu").offset({ top: pData.pixel.y-16, left: pData.pixel.x-16});
-            _gdata.model_jq("#maincirclemenu").circleMenu('open');
-           }
-         }, singleton);        
+        _gdata.model_map.addMarker(pPos.lnglat, "click me",pPos);        
       }
+    } else if (sType == "clickmarker") {
+      // click one marker.................................................
+
+      switch(gamestate)
+      {
+        case "selectbirthpt":
+        {
+          _gdata.model_jq("#CommonChoose_Content").html("使用这个位置作为出生点么？");
+          _gdata.model_jq("#dialog-CommonChoose").dialog({
+            autoOpen: false,
+            modal: true,
+            resizable: false,
+            draggable: true,
+            show: {
+              effect: "blind",
+              duration: 800
+            },
+            closeOnEscape: false,
+            dialogClass: "noclose",
+            title: "提示",
+            buttons: [{
+              text: "是的",
+              icons: {
+                primary: "ui-icon-arrowthick-1-e"
+              },
+              click: function() {
+                _gdata.model_jq("#dialog-CommonChoose").dialog("close");
+
+                singleton.onSetBirthPosition({
+                  position: pPos.lnglat
+                }, {
+                  regeocode: {
+                    formattedAddress: "aaaa"
+                  }
+                });
+
+              }
+            }, {
+              text: "放弃",
+              icons: {
+                primary: "ui-icon-arrowreturnthick-1-w"
+              },
+              click: function() {
+                _gdata.model_jq("#dialog-CommonChoose").dialog("close");
+              }
+            }]
+          });
+          _gdata.model_jq("#dialog-CommonChoose").dialog("open");
+        }break;
+
+        case "free":
+        {
+          _gdata.model_userdata.setCurSelectPoi(pPos);
+          console.log("clickmarker:",pPos);
+          _gdata.model_jq("#maincirclemenu").offset({ top: pPos.pixel.y-16, left: pPos.pixel.x-16});
+          _gdata.model_jq("#maincirclemenu").circleMenu('open');
+        }break;
+      }
+
     }
   },
 
@@ -354,8 +345,6 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
     } else {
       console.log(result);
     }
-
-
   },
   
   enter: function() {
@@ -408,9 +397,8 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
               _gdata.model_map.addMarker(
                 _gdata.model_userdata.userdata.curpos, 
                 _gdata.model_userdata.userdata.account,
-                function(szType, pData) {},
-                singleton
-              );
+                _gdata.model_userdata.userdata.curpos
+                );
             }
             break;
           case 1:
@@ -455,11 +443,11 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
       select: function(evt, index) {
         
         
-        var nBtnId = Number(index[0].id);
+        var nBtnId = index[0].id;
         console.log("aaaaa->",nBtnId);
         switch(nBtnId)
           {
-            case 1:
+            case "teleport":
               {
                 singleton.onTeleportToPoi(_gdata.model_userdata.getCurSelectPoi());
 
