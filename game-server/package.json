@@ -3,7 +3,10 @@
     "version":"0.0.1",
     "private":false,
     "dependencies":{
-        "pomelo":"1.1.9"
+        "pomelo":"1.1.9",
+        "request":">=2.72.0",
+        "aws-sdk":">=2.1.50",
+        "redis":">=2.6.2"
     }
 }
 
