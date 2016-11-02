@@ -1,5 +1,23 @@
 var AWS = require('aws-sdk');
 var myrequest = require('request');
+var myredis = require("redis");
+var myBabyParse = require("babyparse");
+
+var myrediscl = myredis.createClient();
+myrediscl.on("connect", function () {
+    console.log("redis client connect start ");
+});
+myrediscl.on("error", function (err) {
+    console.log("redis client Error " + err);
+});
+
+// test csv parse...
+if(0)
+	{
+		var pCSV = myBabyParse.parse("INT	FLOAT	STRING\n#ID	SPEED	NAME\n0	2.3	abcd\n",{comments:true});
+		console.log("aaaaaaaaaaaaaaaaaaaaaaa",pCSV);
+	}
+
 
 AWS.config.loadFromPath('./config/aws-config_testuser1.json');
 var dynamodb = new AWS.DynamoDB();
@@ -622,6 +640,7 @@ Handler.prototype.teleportToPosition = function(msg,session,next) {
 		next(null, {code: 202, msg: 'Not Defined AccKey'});
 		return;
 	}
+	console.log("check session",session);
 	
 	check_HasUser("loginkey:"+msg.acckey,function(szResult,pUserData){
 		if (szResult == "success") {
