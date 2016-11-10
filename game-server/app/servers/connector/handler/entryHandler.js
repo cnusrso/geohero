@@ -32,6 +32,7 @@ function myfun_crypto (text) {
 };
 
 var sKey = '957606db3c3518da4a5dda76d1641008';
+var sYunTuKey = '957606db3c3518da4a5dda76d1641008';
 var sPrivateKey = 'b6e5a1d7de8220063267663c21e6e171';
 var sTable_t_account = '57067e02305a2a034b260fa2';
 
@@ -79,7 +80,7 @@ function myfun_getDateTimeNumber() {
 	return date.getTime();
 }
 
-// redis key/value function................................................
+// begin redis function................................................
 function redis_SetDataByUserName(szUserName,sData) {
 	myrediscl.set(szUserName,sData);
 }
@@ -97,8 +98,100 @@ function redis_GetDataByUserName(szUserName,funcCallback,pCallOwner) {
 function redis_DelDataByUserName(szUserName){
 	myrediscl.del(szUserName);
 }
-
 // end redis function ...............................................................
+
+// begin yuntu function ................................................................
+
+function yuntu_GetDataByFilter(sTableId,szFilter,funcCallback,pCallOwner){
+	var sHttpGetHead = "http://yuntuapi.amap.com/datamanage/data/list?";
+	var sSig = myfun_crypto("filter="+szFilter+"&key="+sYunTuKey+"&tableid="+sTableId+sPrivateKey);
+	var sFullURL = sHttpGetHead+"tableid="+sTableId+"&filter="+szFilter+"&key="+sYunTuKey+"&sig="+sSig;
+	myrequest(sFullURL, function(error, response, body) {
+		var nResult = 0;
+		if (!error && response.statusCode == 200) {
+				nResult = 1;
+		} else {
+			console.log("yuntuapi list failed:->",error, response, body, sTableId, szFilter);
+			nResult = 0;
+		}
+		if (pCallOwner != null && funcCallback != null) {
+			funcCallback.call(pCallOwner, nResult, body);
+		} else if (funcCallback != null) {
+			funcCallback(nResult, body);
+		}
+	});
+}
+
+function yuntu_UpdateNewData(sTableId,szData,funcCallback,pCallOwner){
+	
+	var sHttpPostHead = "http://yuntuapi.amap.com/datamanage/data/update";
+	var sSig = myfun_crypto("data="+szData+"&key="+sYunTuKey+"&loctype=1&tableid="+sTableId+sPrivateKey);
+	myrequest.post(
+		{
+			url:sHttpPostHead, 
+			form:{
+				key:sYunTuKey,
+				loctype:1,
+				tableid:sTableId,
+				data:szData,
+				sig:sSig
+			},
+		}, 
+		function(error,response,body){
+			var nResult = 0;			
+			if (!error && response.statusCode == 200) {
+				nResult = 1;
+			} else {
+				console.log("yuntuapi update failed:->",error, response, body, sTableId, szData);
+				nResult = 0;
+			}
+			
+			if (pCallOwner != null && funcCallback != null) {
+				funcCallback.call(pCallOwner, nResult, body);
+			} else if (funcCallback != null) {
+				funcCallback(nResult, body);
+			}
+		}
+	);
+	
+}
+
+function yuntu_AddNewData(sTableId,szData,funcCallback,pCallOwner){
+	
+	var sHttpGetHead = 'http://yuntuapi.amap.com/datamanage/data/create';
+	var sSig = myfun_crypto("data="+szData+"&key="+sYunTuKey+"&loctype=1&tableid="+sTableId+sPrivateKey);
+	// do regist
+	myrequest.post(
+		{
+			url:sHttpGetHead, 
+			form:{
+				key:sYunTuKey,
+				loctype:1,
+				tableid:sTableId,
+				data:szData,
+				sig:sSig
+			},
+		}, 
+		function(error,response,body) {
+			var nResult = 0;			
+			if (!error && response.statusCode == 200) {
+				nResult = 1;
+			} else {
+				console.log("yuntuapi create failed:->",error, response, body, sTableId, szData);
+				nResult = 0;
+			}
+			
+			if (pCallOwner != null && funcCallback != null) {
+				funcCallback.call(pCallOwner, nResult, body);
+			} else if (funcCallback != null) {
+				funcCallback(nResult, body);
+			}
+		}
+	);
+	
+}
+
+// end yuntu function .................................................................
 
 
 
@@ -106,22 +199,18 @@ function check_HasUser(szUserName, funcCallback, pCallOwner) {
 	redis_GetDataByUserName(szUserName,function(sErr,sData){
 		if(sErr != null || sData == null){
 			// user not in redis,get it from db
-			var sHttpGetHead = "http://yuntuapi.amap.com/datamanage/data/list?";
-			var sTableid = sTable_t_account;
 			var sFilter = "account:"+szUserName;
-			var sSig = myfun_crypto("filter="+sFilter+"&key="+sKey+"&tableid="+sTableid+sPrivateKey);
-			var sFullURL = sHttpGetHead+"tableid="+sTableid+"&filter="+sFilter+"&key="+sKey+"&sig="+sSig;
-			myrequest(sFullURL, function(error, response, body) {
+			yuntu_GetDataByFilter(sTable_t_account,sFilter,function(nResult,sBody){
 				var szResult = "";
 				var pResult = {};
-				if (!error && response.statusCode == 200) {
-					// 			console.log(body);
-					pResult = eval("(" + body + ")");
+				
+				if(nResult == 1){
+					pResult = eval("(" + sBody + ")");
 					if (pResult.count == 1) {
 						// only one account is ok
 						szResult = "success";
 						// cache this user's value.
-						redis_SetDataByUserName(szUserName,body);
+						redis_SetDataByUserName(szUserName,sBody);
 					} else {
 						szResult = "failed";
 					}
@@ -304,7 +393,7 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 	// check same user login again...
 	var sessionService = this.app.get('sessionService');
 	var oldSession = sessionService.getByUid(msg.username);
-	console.log("oldSessionoldSessionoldSession",oldSession)
+// 	console.log("oldSessionoldSessionoldSession",oldSession)
 	var self = this;
 	if (!!oldSession) {
 		sessionService.kick(msg.username, "other login", function() {
@@ -318,6 +407,7 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 		session.pushAll();
 	}
 	
+	// get this user data
 	check_HasUser(msg.username,function(szResult,pUserData){
 		if (szResult == "success") {
 			
@@ -325,7 +415,6 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 			if (sStorePwd == pUserData.datas[0].password) {
 
 				// check password ok,then update acckey
-				var sHttpPostHead = "http://yuntuapi.amap.com/datamanage/data/update";
 				var nCurTime = myfun_getDateTimeNumber();
 				var szAccKey = myfun_crypto(msg.username+nCurTime.toString());
 				var pInsertData = {
@@ -333,50 +422,34 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 					loginkey:szAccKey
 				};
 				var pData = JSON.stringify(pInsertData);
-				sSig = myfun_crypto("data="+pData+"&key="+sKey+"&loctype=1&tableid="+sTable_t_account+sPrivateKey);
-				// update acckey..
-				myrequest.post(
-					{
-						url:sHttpPostHead, 
-						form:{
-							key:sKey,
-							loctype:1,
-							tableid:sTable_t_account,
-							data:pData,
-							sig:sSig
-						},
-					}, 
-					function(error,response,body)
-					{
-						if (!error && response.statusCode == 200) {
-
-							console.log("update body:",body);
-							var pResult = eval("(" + body + ")");
-							if(pResult.status == 1)
-								{
-									// update key ok, response client
-									next(null, {
-										code: 200,
-										account: msg.username,
-										msg: szAccKey
-									});
-									
-									// update redis data
-									pUserData.datas[0].loginkey = pInsertData.loginkey;
-									redis_SetDataByUserName(msg.username,JSON.stringify(pUserData));
-								}
-							else
-								{
-									next(null, {
-										code: 205,
-										account: msg.username,
-										msg: pResult.info
-									});
-								}
+				yuntu_UpdateNewData(sTable_t_account,pData,function(nResult,sData){
+					if(nResult == 1){
+						var pResult = eval("(" + sData + ")");
+						if(pResult.status == 1)	{
+							// update key ok, response client
+							next(null, {
+								code: 200,
+								account: msg.username,
+								msg: szAccKey
+							});
+							// update redis data
+							pUserData.datas[0].loginkey = pInsertData.loginkey;
+							redis_SetDataByUserName(msg.username,JSON.stringify(pUserData));
+						}	else {
+							next(null, {
+								code: 205,
+								account: msg.username,
+								msg: pResult.info
+							});
 						}
-					}
-				);
-
+					} else {
+						next(null, {
+							code: 206,
+							account: msg.username,
+							msg: "system failed"
+						});
+					}					
+				});
 			} else {
 				next(null, {
 					code: 204,
@@ -384,13 +457,12 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 					msg: 'Failed check password'
 				});
 			}
-			
 		} else {
 			next(null, {
-					code: 203,
-					account: msg.username,
-					msg: szResult+'not find user'
-				});
+				code: 203,
+				account: msg.username,
+				msg: szResult+'not find user'
+			});
 		}
 	});
 	
