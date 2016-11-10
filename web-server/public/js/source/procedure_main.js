@@ -57,6 +57,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
   
   DoNetworkMsg:function(szType,pData){
     _gdata.model_notify.showNotify("Net Error", szType);
+    console.log("NetworkMsg:->",szType,pData);
     
     if(szType == "io-error"){
       _gdata.model_util.BlockMsgHide();
@@ -169,6 +170,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
     var singleton = this;
     _gdata.model_netmgr.req_SetBirthPosition(
       _gdata.model_userdata.userdata.acckey,
+      _gdata.model_userdata.userdata.account,
       pData.position.getLng(),
       pData.position.getLat(),
       pDataDetail.regeocode.formattedAddress,
@@ -197,6 +199,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
     var singleton = this;
     _gdata.model_netmgr.req_TeleportToPosition(
       _gdata.model_userdata.userdata.acckey,
+      _gdata.model_userdata.userdata.account,
       pPoiData.lnglat.getLng(),
       pPoiData.lnglat.getLat(),
       pPoiData.name,
@@ -246,7 +249,11 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
       console.warn("GetUserData again!!",pData);
       setTimeout(
         function(){
-          _gdata.model_netmgr.req_getUserData(_gdata.model_userdata.userdata.acckey, singleton.onGetUserDataResult, singleton);
+          _gdata.model_netmgr.req_getUserData(
+            _gdata.model_userdata.userdata.acckey, 
+            _gdata.model_userdata.userdata.account,
+            singleton.onGetUserDataResult, 
+            singleton);
         },
         500
       );
@@ -358,9 +365,11 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 
     setTimeout(
       function(){
-        _gdata.model_netmgr.req_getUserData(_gdata.model_userdata.userdata.acckey, singleton.onGetUserDataResult, singleton);
+        var acckey = _gdata.model_userdata.userdata.acckey;
+        var username = _gdata.model_userdata.userdata.account;
+        _gdata.model_netmgr.req_getUserData(acckey, username, singleton.onGetUserDataResult, singleton);
       },
-      1000
+      200
     );
     
 
@@ -404,7 +413,9 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
           case 1:
             {
               singleton.closeMe();
-              _gdata.procedure_login.enter();
+//               _gdata.procedure_login.enter();
+              // todo 
+              window.location.reload(true);
             }
             break;
           default:
@@ -472,13 +483,12 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
   },// function end
 
   closeMe: function(){
-    _gdata.model_jq("#btn-Account").off("click");
+    
     
     _gdata.model_map.setEventCallbackData(null,null);
     _gdata.model_netmgr.setSystemCallback(null);
     
     _gdata.model_netmgr.disconnectNet();
-    
     
   },
   toNextProcedure: function() {

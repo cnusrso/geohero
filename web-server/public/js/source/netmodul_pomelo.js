@@ -152,7 +152,7 @@ define(['md5'], {
 		},this);
 	},
 	
-	req_getUserData: function(acckey, funcCallback, pCallOwner) {
+	req_getUserData: function(acckey, username,funcCallback, pCallOwner) {
 		this.checkConnect(function(szState){
 			if(szState == "reconnect")
 				{
@@ -162,6 +162,7 @@ define(['md5'], {
 				{
 					var pMsg = {};
 					pMsg.acckey = acckey;
+					pMsg.username = username;
 
 					window.pomelo.request("connector.entryHandler.get_UserData", pMsg, function(data) {
 
@@ -173,7 +174,7 @@ define(['md5'], {
 	},
 	
 	// 设置首次出生位置信息
-	req_SetBirthPosition: function(acckey, lng, lat, name, funcCallback, pCallOwner) {
+	req_SetBirthPosition: function(acckey, username,lng, lat, name, funcCallback, pCallOwner) {
 		this.checkConnect(function(szState){
 			if(szState == "reconnect")
 				{
@@ -183,6 +184,7 @@ define(['md5'], {
 				{
 					var pMsg = {};
 					pMsg.acckey = acckey;
+					pMsg.username = username;
 					pMsg.poslng = lng;
 					pMsg.poslat = lat;
 					pMsg.name = name;
@@ -199,7 +201,7 @@ define(['md5'], {
 	},
 
 	// 设置瞬间移动到某位置
-	req_TeleportToPosition: function(acckey, lng, lat, name, funcCallback, pCallOwner) {
+	req_TeleportToPosition: function(acckey, username,lng, lat, name, funcCallback, pCallOwner) {
 		this.checkConnect(function(szState){
 			if(szState == "reconnect")
 				{
@@ -209,6 +211,7 @@ define(['md5'], {
 				{
 					var pMsg = {};
 					pMsg.acckey = acckey;
+					pMsg.username = username;
 					pMsg.poslng = lng;
 					pMsg.poslat = lat;
 					pMsg.name = name;
