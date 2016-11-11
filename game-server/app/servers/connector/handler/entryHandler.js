@@ -255,6 +255,10 @@ var onUserLeave = function (username, session) {
   }
 };
 
+Handler.prototype.OnExit = function(){
+	console.log("app exit");
+};
+
 /*
 	return: 
 	code	msg
@@ -525,74 +529,45 @@ Handler.prototype.setBirthPosition = function(msg,session,next) {
 				return;
 			}
 			
-//  				console.log("msg->",msg)
-				// update position and name
-				var sHttpPostHead = "http://yuntuapi.amap.com/datamanage/data/update";
-				var szlocation=msg.poslng+','+msg.poslat;
-				var pInsertData = {
-					_id:pUserData.datas[0]._id,
-					_name: '1',//msg.name.toString(),
-					_location:szlocation
-				};
-				var pData = JSON.stringify(pInsertData);
-				console.log("pData:",pData);
-				var sTableid = sTable_t_account;
-				sSig = myfun_crypto("data="+pData+"&key="+sKey+"&loctype=1&tableid="+sTableid+sPrivateKey);
-				// update position..
-				myrequest.post(
-					{
-						url:sHttpPostHead,
-						headers: [
-							{
-								name: 'content-type',
-								value: 'application/x-www-form-urlencoded'
-							}
-						],
-						form:{
-							key:sKey,
-							loctype:1,
-							tableid:sTableid,
-							data:pData,
-							sig:sSig
-						},
-					}, 
-					function(error,response,body)
-					{
-						if (!error && response.statusCode == 200) {
-
-							console.log("update body:",body);
-							var pResult = eval("(" + body + ")");
-							if(pResult.status == 1)
-								{
-									// update ok, response client
-									next(null, {
-										code: 200,
-										msg: msg.acckey
-									});
-									// update redis data
-									pUserData.datas[0]._name = pInsertData._name;
-									pUserData.datas[0]._location = pInsertData._location;
-									redis_SetDataByUserName(msg.username,JSON.stringify(pUserData));
-								}
-							else
-								{
-									next(null, {
-										code: 204,
-										msg: pResult.info
-									});
-								}
-						}
+			var szlocation=msg.poslng+','+msg.poslat;
+			var pInsertData = {
+				_id:pUserData.datas[0]._id,
+				_name: '1',//msg.name.toString(),
+				_location:szlocation
+			};
+			var pData = JSON.stringify(pInsertData);
+			yuntu_UpdateNewData(sTable_t_account,pData,function(nResult,sData){
+				if(nResult == 1){
+					var pResult = eval("(" + sData + ")");
+					if (pResult.status == 1) {
+						// update ok, response client
+						next(null, {
+							code: 200,
+							msg: msg.acckey
+						});
+						// update redis data
+						pUserData.datas[0]._name = pInsertData._name;
+						pUserData.datas[0]._location = pInsertData._location;
+						redis_SetDataByUserName(msg.username, JSON.stringify(pUserData));
+					} else {
+						next(null, {
+							code: 204,
+							msg: pResult.info
+						});
 					}
-				);
-			
+				} else {
+					next(null, {
+						code: 205,
+						msg: "update failed"
+					});
+				}
+			});
 		} else {
 			console.log('Not Find User');
 			next(null,{code:203,msg:'Not Find User'});
 			return;
 		}
 	});
-	
-	
 };
 
 
@@ -621,72 +596,44 @@ Handler.prototype.teleportToPosition = function(msg,session,next) {
 				});
 				return;
 			}
-				// update position and name
-				var sHttpPostHead = "http://yuntuapi.amap.com/datamanage/data/update";
-				var szlocation=msg.poslng+','+msg.poslat;
-				var pInsertData = {
-					_id:pUserData.datas[0]._id,
-					_name: '1',//msg.name.toString(),
-					_location:szlocation
-				};
-				var pData = JSON.stringify(pInsertData);
-				console.log("pData:",pData);
-				var sTableid = sTable_t_account;
-				sSig = myfun_crypto("data="+pData+"&key="+sKey+"&loctype=1&tableid="+sTableid+sPrivateKey);
-				// update position..
-				myrequest.post(
-					{
-						url:sHttpPostHead,
-						headers: [
-							{
-								name: 'content-type',
-								value: 'application/x-www-form-urlencoded'
-							}
-						],
-						form:{
-							key:sKey,
-							loctype:1,
-							tableid:sTableid,
-							data:pData,
-							sig:sSig
-						},
-					}, 
-					function(error,response,body)
-					{
-						if (!error && response.statusCode == 200) {
-
-							console.log("update body:",body);
-							var pResult = eval("(" + body + ")");
-							if(pResult.status == 1)
-								{
-									// update ok, response client
-									next(null, {
-										code: 200,
-										msg: msg.acckey
-									});
-									
-									// update user in redis.
-									pUserData.datas[0]._name = pInsertData._name;
-									pUserData.datas[0]._location = pInsertData._location;
-									redis_SetDataByUserName(msg.username,JSON.stringify(pUserData));
-								}
-							else
-								{
-									next(null, {
-										code: 204,
-										msg: pResult.info
-									});
-								}
-						}
-					}
-				);
 			
+			var szlocation=msg.poslng+','+msg.poslat;
+			var pInsertData = {
+				_id:pUserData.datas[0]._id,
+				_name: '1',//msg.name.toString(),
+				_location:szlocation
+			};
+			var pData = JSON.stringify(pInsertData);
+			yuntu_UpdateNewData(sTable_t_account,pData,function(nResult,sData){
+				if(nResult == 1){
+					var pResult = eval("(" + sData + ")");
+					if(pResult.status == 1) {
+						// update ok, response client
+						next(null, {
+							code: 200,
+							msg: msg.acckey
+						});
+						// update user in redis.
+						pUserData.datas[0]._name = pInsertData._name;
+						pUserData.datas[0]._location = pInsertData._location;
+						redis_SetDataByUserName(msg.username,JSON.stringify(pUserData));
+					} else {
+						next(null, {
+							code: 204,
+							msg: pResult.info
+						});
+					}
+				}	else {
+					next(null, {
+						code: 205,
+						msg: "Failed update"
+					});
+				}
+			});
 		} else {
 			console.log('Not Find User');
 			next(null,{code:203,msg:'Not Find User'});
 			return;
 		}
 	});
-	
-	
 };
