@@ -286,86 +286,68 @@ Handler.prototype.check_Register = function(msg,session,next) {
 		return;
 	}
 	// first check has user name...
-	var sHttpGetHead = "http://yuntuapi.amap.com/datamanage/data/list?";
-	var sTableid = sTable_t_account;
-	var sFilter = "account:"+msg.username;
-	var sSig = myfun_crypto("filter="+sFilter+"&key="+sKey+"&tableid="+sTableid+sPrivateKey);
-	var sFullURL = sHttpGetHead+"tableid="+sTableid+"&filter="+sFilter+"&key="+sKey+"&sig="+sSig;
-	//http://yuntuapi.amap.com/datamanage/data/list?tableid=57067e02305a2a034b260fa2&filter=account:cnusrso&key=957606db3c3518da4a5dda76d1641008&sig=3f8746fb740d081e3a654c07ff333c32
-	myrequest(sFullURL, function(error, response, body) {
-		if (!error && response.statusCode == 200) {
-			var pResult = eval("(" + body + ")");
-			if (pResult.count >= 1) {
-					next(null, {
-						code: 204,
-						account: msg.username,
-						msg: 'Has User'
-					});
-				
-			} else {
-				// not find user can regist
-				sHttpGetHead = 'http://yuntuapi.amap.com/datamanage/data/create';
-				var nCurTime = myfun_getDateTimeNumber();
-				var szAccKey = myfun_crypto(msg.username+nCurTime.toString());
-				var pInsertData = {
-					_name:0,
-					_location:"100,31",
-					account:msg.username,
-					password:myfun_BuildEndPassword(msg.username, msg.password),
-					loginkey:szAccKey
-				};
-				var pData = JSON.stringify(pInsertData);
-				sSig = myfun_crypto("data="+pData+"&key="+sKey+"&loctype=1&tableid="+sTableid+sPrivateKey);
-				
-				// do regist
-				myrequest.post(
-					{
-						url:sHttpGetHead, 
-						form:{
-							key:sKey,
-							loctype:1,
-							tableid:sTableid,
-							data:pData,
-							sig:sSig
-						},
-					}, 
-					function(err,httpResponse,body)
-					{
-						if (!error && response.statusCode == 200) {
-							
-							console.log("body:",body);
-							pResult = eval("(" + body + ")");
-							if(pResult.status == 1)
-								{
-									// regist ok
-									next(null, {
-										code: 200,
-										account: msg.username,
-										msg: szAccKey
-									});
-								}
-							else
-								{
-									next(null, {
-										code: 205,
-										account: msg.username,
-										msg: pResult.info
-									});
-								}
-						}
-					}
-				);
-			}
-		} else {
+	check_HasUser(msg.username,function(szResult,pUserData){
+		if (szResult == "success") {
+			// already has this user,can't register
+			next(null, {
+				code: 204,
+				account: msg.username,
+				msg: 'Has User'
+			});
+		} else if(szResult == "failed") {
+			// can register
 			
+			var nCurTime = myfun_getDateTimeNumber();
+			var szAccKey = myfun_crypto(msg.username+nCurTime.toString());
+			var pInsertData = {
+				_name:0,
+				_location:"100,31",
+				account:msg.username,
+				password:myfun_BuildEndPassword(msg.username, msg.password),
+				loginkey:szAccKey
+			};
+			var pData = JSON.stringify(pInsertData);
+			yuntu_AddNewData(sTable_t_account,pData,function(nResult,pResultBody){
+				
+				if (nResult == 1) {
+					var pResult = eval("(" + pResultBody + ")");
+					if (pResult.status == 1) {
+						// regist ok
+						session.bind(msg.username);
+						session.on('closed', onUserLeave.bind(null, msg.username));
+						session.pushAll();
+						
+						next(null, {
+							code: 200,
+							account: msg.username,
+							msg: szAccKey
+						});
+					} else {
+						next(null, {
+							code: 205,
+							account: msg.username,
+							msg: pResult.info
+						});
+					}
+				} else {
+					next(null, {
+							code: 207,
+							account: msg.username,
+							msg: pResultBody
+						});
+				}
+			});
+			
+		} else {
+			// system error
 			next(null, {
 				code: 206,
 				account: msg.username,
-				msg: 'amap yuntuapi response->' + response.statusCode
+				msg: 'amap yuntuapi response->' + szResult
 			});
 		}
-	})
-	
+	}
+	);
 };
 
 /*
@@ -394,23 +376,6 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 		return;
 	}
 	
-	// check same user login again...
-	var sessionService = this.app.get('sessionService');
-	var oldSession = sessionService.getByUid(msg.username);
-// 	console.log("oldSessionoldSessionoldSession",oldSession)
-	var self = this;
-	if (!!oldSession) {
-		sessionService.kick(msg.username, "other login", function() {
-			session.bind(msg.username);
-			session.on('closed', onUserLeave.bind(null, msg.username));
-			session.pushAll();
-		});
-	} else {
-		session.bind(msg.username);
-		session.on('closed', onUserLeave.bind(null, msg.username));
-		session.pushAll();
-	}
-	
 	// get this user data
 	check_HasUser(msg.username,function(szResult,pUserData){
 		if (szResult == "success") {
@@ -418,6 +383,23 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 			var sStorePwd = myfun_BuildEndPassword(msg.username, msg.password);
 			if (sStorePwd == pUserData.datas[0].password) {
 
+				// check same user login again...
+				var sessionService = this.app.get('sessionService');
+				var oldSession = sessionService.getByUid(msg.username);
+				// 	console.log("oldSessionoldSessionoldSession",oldSession)
+				var self = this;
+				if (!!oldSession) {
+					sessionService.kick(msg.username, "other login", function() {
+						session.bind(msg.username);
+						session.on('closed', onUserLeave.bind(null, msg.username));
+						session.pushAll();
+					});
+				} else {
+					session.bind(msg.username);
+					session.on('closed', onUserLeave.bind(null, msg.username));
+					session.pushAll();
+				}
+				
 				// check password ok,then update acckey
 				var nCurTime = myfun_getDateTimeNumber();
 				var szAccKey = myfun_crypto(msg.username+nCurTime.toString());
