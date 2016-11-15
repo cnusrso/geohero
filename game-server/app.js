@@ -18,8 +18,10 @@ app.configure('production|development', 'connector', function(){
   
   
   app.beforeStopHook(function(app,cb){
-    console.log("app will stop!!!!!!!!!!");
-    //app.rpc.connector.entryHandler.OnExit();
+//     var logger = require('pomelo-logger').getLogger('log', __filename, process.pid);
+//     process.env.LOGGER_LINE = true;
+//     logger.info('app will stop!!!!!!!!!!');
+    app.rpc.connector.entryHandler.OnExit();
     
     
     cb();

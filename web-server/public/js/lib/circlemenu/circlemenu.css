@@ -14,7 +14,7 @@ html,body{height:100%;padding:0;margin:0;overflow:hidden;}
     background:#000;
 	/* background:url(../../images/menucenter.png); */
     color:#fff;
-    font-size:25px;
+    font-size:15px;
 }
 .menu a{
     text-decoration: none;

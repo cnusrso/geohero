@@ -192,6 +192,33 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
     );
   },
   
+  getPoiData: function(pPoiData) {
+     _gdata.model_util.BlockMsgShow("...");
+
+    var singleton = this;
+    _gdata.model_netmgr.req_GetPoiData(
+      _gdata.model_userdata.userdata.acckey,
+      _gdata.model_userdata.userdata.account,
+      pPoiData.id,
+      function(data) {
+        _gdata.model_util.BlockMsgHide();
+        console.log("data.msg",data.msg);
+        if (data.code == 200) {
+          var pPoiData = JSON.parse(data.msg);
+          var poiname = decodeURI(pPoiData.datas[0]._name);
+          console.log("poi name:",poiname);
+          
+          if(pPoiData.datas[0].ownerid >= 0){
+             _gdata.model_notify.showNotify("Info", "有人占领的巢穴");
+           }
+        } else if(data.code == 201) {
+          _gdata.model_notify.showNotify("Info", "无人占领的巢穴");
+        }
+      },
+      singleton
+    );
+  },
+  
   onTeleportToPoi: function(pPoiData) {
     
     _gdata.model_util.BlockMsgShow("Teleport To...");
@@ -462,6 +489,11 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
               {
                 singleton.onTeleportToPoi(_gdata.model_userdata.getCurSelectPoi());
 
+              }break;
+              
+            case "query":
+              {
+                singleton.getPoiData(_gdata.model_userdata.getCurSelectPoi());
               }break;
           }
         

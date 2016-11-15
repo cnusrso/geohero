@@ -34,7 +34,8 @@ function myfun_crypto (text) {
 var sKey = '957606db3c3518da4a5dda76d1641008';
 var sYunTuKey = '957606db3c3518da4a5dda76d1641008';
 var sPrivateKey = 'b6e5a1d7de8220063267663c21e6e171';
-var sTable_t_account = '57067e02305a2a034b260fa2';
+var sTable_t_account 	= '57067e02305a2a034b260fa2';
+var sTable_t_poi			= '570680c6305a2a034b262400';
 
 // build end password
 function myfun_BuildEndPassword(sInputUserName,sInputUserPwd)
@@ -81,12 +82,12 @@ function myfun_getDateTimeNumber() {
 }
 
 // begin redis function................................................
-function redis_SetDataByUserName(szUserName,sData) {
-	myrediscl.set(szUserName,sData);
+function redis_SetDataByKey(szKey,sData) {
+	myrediscl.set(szKey,sData);
 }
-function redis_GetDataByUserName(szUserName,funcCallback,pCallOwner) {
-	myrediscl.get(szUserName, function(err, reply) {
-		console.log("find user name result:->",szUserName,err,reply);
+function redis_GetDataByKey(szKey,funcCallback,pCallOwner) {
+	myrediscl.get(szKey, function(err, reply) {
+// 		console.log("find key result:->",szKey,err,reply);
 		
 		if (pCallOwner != null && funcCallback != null) {
 			funcCallback.call(pCallOwner, err, reply);
@@ -95,8 +96,8 @@ function redis_GetDataByUserName(szUserName,funcCallback,pCallOwner) {
 		}
 	});
 }
-function redis_DelDataByUserName(szUserName){
-	myrediscl.del(szUserName);
+function redis_DelDataByKey(szKey){
+	myrediscl.del(szKey);
 }
 // end redis function ...............................................................
 
@@ -193,10 +194,46 @@ function yuntu_AddNewData(sTableId,szData,funcCallback,pCallOwner){
 
 // end yuntu function .................................................................
 
-
+function check_HasPoi(szPoiId, funcCallback, pCallOwner) {
+	redis_GetDataByKey(szPoiId,function(sErr,sData){
+		if(sErr != null || sData == null){
+			var sFilter = "poiid:"+szPoiId;
+			yuntu_GetDataByFilter(sTable_t_poi,sFilter,function(nResult,sBody){
+				var szResult = "";
+				var pResult = {};
+				if(nResult == 1){
+					pResult = JSON.parse(sBody);
+					if (pResult.count == 1) {
+						// only one poi is ok
+						szResult = "success";
+						// cache this poi's value.
+						redis_SetDataByKey(szPoiId,sBody);
+					} else {
+						szResult = "failed";
+					}
+				} else {
+					szResult = "system error";
+				}
+				if (pCallOwner != null && funcCallback != null) {
+					funcCallback.call(pCallOwner, szResult, pResult);
+				} else if (funcCallback != null) {
+					funcCallback(szResult, pResult);
+				}
+			});	
+		} else {
+			// poi data in redis
+			var pResult = JSON.parse(sData);
+			if (pCallOwner != null && funcCallback != null) {
+				funcCallback.call(pCallOwner, "success", pResult);
+			} else if (funcCallback != null) {
+				funcCallback("success", pResult);
+			}
+		}
+	});
+}
 
 function check_HasUser(szUserName, funcCallback, pCallOwner) {
-	redis_GetDataByUserName(szUserName,function(sErr,sData){
+	redis_GetDataByKey(szUserName,function(sErr,sData){
 		if(sErr != null || sData == null){
 			// user not in redis,get it from db
 			var sFilter = "account:"+szUserName;
@@ -205,12 +242,12 @@ function check_HasUser(szUserName, funcCallback, pCallOwner) {
 				var pResult = {};
 				
 				if(nResult == 1){
-					pResult = eval("(" + sBody + ")");
+					pResult = JSON.parse(sBody);
 					if (pResult.count == 1) {
 						// only one account is ok
 						szResult = "success";
 						// cache this user's value.
-						redis_SetDataByUserName(szUserName,sBody);
+						redis_SetDataByKey(szUserName,sBody);
 					} else {
 						szResult = "failed";
 					}
@@ -225,7 +262,7 @@ function check_HasUser(szUserName, funcCallback, pCallOwner) {
 			});
 		}	else {
 			// user in redis ...
-			var pResult = eval("(" + sData + ")");
+			var pResult = JSON.parse(sData);
 			if (pCallOwner != null && funcCallback != null) {
 				funcCallback.call(pCallOwner, "success", pResult);
 			} else if (funcCallback != null) {
@@ -251,7 +288,7 @@ var Handler = function(app) {
 var onUserLeave = function (username, session) {
   if (session && session.uid) {
 		console.log("user leave",session.uid);
-		redis_DelDataByUserName(username);
+		redis_DelDataByKey(username);
   }
 };
 
@@ -311,7 +348,7 @@ Handler.prototype.check_Register = function(msg,session,next) {
 			yuntu_AddNewData(sTable_t_account,pData,function(nResult,pResultBody){
 				
 				if (nResult == 1) {
-					var pResult = eval("(" + pResultBody + ")");
+					var pResult = JSON.parse(pResultBody);
 					if (pResult.status == 1) {
 						// regist ok
 						session.bind(msg.username);
@@ -411,7 +448,7 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 				var pData = JSON.stringify(pInsertData);
 				yuntu_UpdateNewData(sTable_t_account,pData,function(nResult,sData){
 					if(nResult == 1){
-						var pResult = eval("(" + sData + ")");
+						var pResult = JSON.parse(sData);
 						if(pResult.status == 1)	{
 							// update key ok, response client
 							next(null, {
@@ -421,7 +458,7 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 							});
 							// update redis data
 							pUserData.datas[0].loginkey = pInsertData.loginkey;
-							redis_SetDataByUserName(msg.username,JSON.stringify(pUserData));
+							redis_SetDataByKey(msg.username,JSON.stringify(pUserData));
 						}	else {
 							next(null, {
 								code: 205,
@@ -479,7 +516,7 @@ Handler.prototype.get_UserData = function(msg, session, next) {
 				});
 				return;
 			}
-			console.log("get user data name",decodeURI(pUserData.datas[0]._name));
+// 			console.log("get user data name",decodeURI(pUserData.datas[0]._name));
 			next(null, {code: 200, data:pUserData.datas[0]});
 		} else {
 			next(null, {code: 201, msg: 'Not Find User'});
@@ -522,7 +559,7 @@ Handler.prototype.setBirthPosition = function(msg,session,next) {
 			var pData = JSON.stringify(pInsertData);
 			yuntu_UpdateNewData(sTable_t_account,pData,function(nResult,sData){
 				if(nResult == 1){
-					var pResult = eval("(" + sData + ")");
+					var pResult = JSON.parse(sData);
 					if (pResult.status == 1) {
 						// update ok, response client
 						next(null, {
@@ -532,7 +569,7 @@ Handler.prototype.setBirthPosition = function(msg,session,next) {
 						// update redis data
 						pUserData.datas[0]._name = pInsertData._name;
 						pUserData.datas[0]._location = pInsertData._location;
-						redis_SetDataByUserName(msg.username, JSON.stringify(pUserData));
+						redis_SetDataByKey(msg.username, JSON.stringify(pUserData));
 					} else {
 						next(null, {
 							code: 204,
@@ -592,7 +629,7 @@ Handler.prototype.teleportToPosition = function(msg,session,next) {
 			yuntu_UpdateNewData(sTable_t_account,pData,function(nResult,sData){
 				if(nResult == 1){
 					console.log("sData:",sData);
-					var pResult = eval("(" + sData + ")");
+					var pResult = JSON.parse(sData);
 					if(pResult.status == 1) {
 						// update ok, response client
 						next(null, {
@@ -602,7 +639,7 @@ Handler.prototype.teleportToPosition = function(msg,session,next) {
 						// update user in redis.
 						pUserData.datas[0]._name = pInsertData._name;
 						pUserData.datas[0]._location = pInsertData._location;
-						redis_SetDataByUserName(msg.username,JSON.stringify(pUserData));
+						redis_SetDataByKey(msg.username,JSON.stringify(pUserData));
 					} else {
 						next(null, {
 							code: 204,
@@ -622,4 +659,58 @@ Handler.prototype.teleportToPosition = function(msg,session,next) {
 			return;
 		}
 	});
+};
+
+Handler.prototype.getPoiData = function(msg,session,next) {
+	if(msg.acckey === undefined)
+	{
+		console.log('Not Find "AccKey"');
+		next(null, {code: 202, msg: 'Not Defined AccKey'});
+		return;
+	}
+	if(msg.username === undefined)
+	{
+		console.log('Not Find "username"');
+		next(null, {code: 202, msg: 'Not Defined username'});
+		return;
+	}
+	if(msg.poiid === undefined)
+	{
+		console.log('Not Find "poiid"');
+		next(null, {code: 202, msg: 'Not Defined poiid'});
+		return;
+	}
+	
+	
+	check_HasUser(msg.username,function(szResult,pUserData){
+		if (szResult == "success") {
+			if (msg.acckey != pUserData.datas[0].loginkey) {
+				next(null, {
+					code: 203,
+					msg: 'AccKey Is Error'
+				});
+				return;
+			}
+			
+			check_HasPoi(msg.poiid,function(szResult,pPoiData){
+				if(szResult == "success"){
+					next(null, {
+							code: 200,
+							msg: JSON.stringify(pPoiData)
+						});
+				} else {
+					console.log('Not Find Poi',szResult);
+					next(null,{code:201,msg:'Not Find Poi->'+szResult});
+					return;
+				}
+			});
+			
+		} else {
+			console.log('Not Find User');
+			next(null,{code:204,msg:'Not Find User'});
+			return;
+		}
+	});
+	
+	
 };

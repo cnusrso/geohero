@@ -205,7 +205,7 @@ define(['md5'], {
 		this.checkConnect(function(szState){
 			if(szState == "reconnect")
 				{
-					this.req_SetBirthPosition(acckey, position, name, funcCallback,pCallOwner);
+					this.req_TeleportToPosition(acckey, username,lng, lat, name, funcCallback,pCallOwner);
 				}
 			else if(szState == "connect")
 				{
@@ -225,5 +225,31 @@ define(['md5'], {
 				}
 		},this);
 	},
+	
+	// 由POI ID 得到对应的数据。。
+	req_GetPoiData: function(acckey, username,poiid, funcCallback, pCallOwner) {
+		this.checkConnect(function(szState){
+			if(szState == "reconnect")
+				{
+					this.req_GetPoiData(acckey, username,poiid, funcCallback,pCallOwner);
+				}
+			else if(szState == "connect")
+				{
+					var pMsg = {};
+					pMsg.acckey = acckey;
+					pMsg.username = username;
+					pMsg.poiid = poiid;
+
+
+					window.pomelo.request("connector.entryHandler.getPoiData", pMsg, function(data) {
+
+						funcCallback.call(pCallOwner, data);
+
+					});
+				}
+		},this);
+	},
+	
+	
 	
 });
