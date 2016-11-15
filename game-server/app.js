@@ -15,6 +15,15 @@ app.configure('production|development', 'connector', function(){
       useDict : true,
       useProtobuf : true
     });
+  
+  
+  app.beforeStopHook(function(app,cb){
+    console.log("app will stop!!!!!!!!!!");
+    //app.rpc.connector.entryHandler.OnExit();
+    
+    
+    cb();
+  });
 });
 
 // start app
