@@ -128,7 +128,7 @@ function yuntu_UpdateNewData(sTableId,szData,funcCallback,pCallOwner){
 	var sSig = myfun_crypto("data="+szData+"&key="+sYunTuKey+"&loctype=1&tableid="+sTableId+sPrivateKey);
 	myrequest.post(
 		{
-			url:sHttpPostHead, 
+			url:sHttpPostHead,
 			form:{
 				key:sYunTuKey,
 				loctype:1,
@@ -256,7 +256,8 @@ var onUserLeave = function (username, session) {
 };
 
 Handler.prototype.OnExit = function(){
-	console.log("app exit");
+// 	console.log("app exit");
+	myrediscl.set('exit time',myfun_getDateTimeStr());
 };
 
 /*
@@ -375,6 +376,7 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 		next(null, {code: 202, account: msg.username, msg: 'Not Defined Password'});
 		return;
 	}
+	var self = this;
 	
 	// get this user data
 	check_HasUser(msg.username,function(szResult,pUserData){
@@ -384,10 +386,9 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 			if (sStorePwd == pUserData.datas[0].password) {
 
 				// check same user login again...
-				var sessionService = this.app.get('sessionService');
+				var sessionService = self.app.get('sessionService');
 				var oldSession = sessionService.getByUid(msg.username);
 				// 	console.log("oldSessionoldSessionoldSession",oldSession)
-				var self = this;
 				if (!!oldSession) {
 					sessionService.kick(msg.username, "other login", function() {
 						session.bind(msg.username);
@@ -478,6 +479,7 @@ Handler.prototype.get_UserData = function(msg, session, next) {
 				});
 				return;
 			}
+			console.log("get user data name",decodeURI(pUserData.datas[0]._name));
 			next(null, {code: 200, data:pUserData.datas[0]});
 		} else {
 			next(null, {code: 201, msg: 'Not Find User'});
@@ -582,12 +584,14 @@ Handler.prototype.teleportToPosition = function(msg,session,next) {
 			var szlocation=msg.poslng+','+msg.poslat;
 			var pInsertData = {
 				_id:pUserData.datas[0]._id,
-				_name: '1',//msg.name.toString(),
+				_name: encodeURI(msg.name),
 				_location:szlocation
 			};
 			var pData = JSON.stringify(pInsertData);
+			console.log("pData:",pData);
 			yuntu_UpdateNewData(sTable_t_account,pData,function(nResult,sData){
 				if(nResult == 1){
+					console.log("sData:",sData);
 					var pResult = eval("(" + sData + ")");
 					if(pResult.status == 1) {
 						// update ok, response client
