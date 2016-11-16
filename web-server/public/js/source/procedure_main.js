@@ -204,6 +204,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
         _gdata.model_util.BlockMsgHide();
         console.log("data.msg",data);
         
+        _gdata.model_jq("#dialog-CommonList").dialog( "option", "title", "巢穴信息" );
         _gdata.model_jq("#dialog-CommonList ul").empty();
         var index = 1;
         
@@ -215,7 +216,9 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
           if(pDataServer.datas[0].ownerid >= 0){
              _gdata.model_notify.showNotify("Info", "有人占领的巢穴");
             
+            
             _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'名字:'+poiname+'<\/li>');
+            _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'级别:'+1+'<\/li>');
             _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'占有者ID:'+pDataServer.datas[0].ownerid+'<\/li>');
             
             
@@ -229,6 +232,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
         
         // 显示空据点界面。
         _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'名字:'+pPoiData.name+'<\/li>');
+        _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'级别:'+1+'<\/li>');
         _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'占有者ID:？？？'+'<\/li>');
         
         _gdata.model_jq("#dialog-CommonList").dialog("open");
