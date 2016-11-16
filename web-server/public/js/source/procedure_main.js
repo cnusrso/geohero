@@ -202,18 +202,36 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
       pPoiData.id,
       function(data) {
         _gdata.model_util.BlockMsgHide();
-        console.log("data.msg",data.msg);
+        console.log("data.msg",data);
+        
+        _gdata.model_jq("#dialog-CommonList ul").empty();
+        var index = 1;
+        
         if (data.code == 200) {
-          var pPoiData = JSON.parse(data.msg);
-          var poiname = decodeURI(pPoiData.datas[0]._name);
+          var pDataServer = JSON.parse(data.msg);
+          var poiname = decodeURI(pDataServer.datas[0]._name);
           console.log("poi name:",poiname);
           
-          if(pPoiData.datas[0].ownerid >= 0){
+          if(pDataServer.datas[0].ownerid >= 0){
              _gdata.model_notify.showNotify("Info", "有人占领的巢穴");
-           }
+            
+            _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'名字:'+poiname+'<\/li>');
+            _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'占有者ID:'+pDataServer.datas[0].ownerid+'<\/li>');
+            
+            
+            _gdata.model_jq("#dialog-CommonList").dialog("open");
+            return;
+           }        
         } else if(data.code == 201) {
           _gdata.model_notify.showNotify("Info", "无人占领的巢穴");
+          
         }
+        
+        // 显示空据点界面。
+        _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'名字:'+pPoiData.name+'<\/li>');
+        _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'占有者ID:？？？'+'<\/li>');
+        
+        _gdata.model_jq("#dialog-CommonList").dialog("open");
       },
       singleton
     );
@@ -454,7 +472,30 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
       }
     });
     
-    
+    _gdata.model_jq("#dialog-CommonList").dialog({
+      autoOpen: false,
+      modal: true,
+      resizable: false,
+      draggable: true,
+      height: 300,
+      show: {
+        effect: "fade",
+        duration: 1000
+      },
+      closeOnEscape: false,
+      dialogClass: "noclose",
+      title: "提示",
+      buttons: [{
+        text: "关闭",
+        icons: {
+          primary: "ui-icon-arrowthick-1-e"
+        },
+        click: function() {
+          _gdata.model_jq("#dialog-CommonList").dialog("close");
+
+        }
+      }]
+    });
     
     _gdata.model_jq('#maincirclemenu').circleMenu({
       direction: 'full',
@@ -494,6 +535,11 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
             case "query":
               {
                 singleton.getPoiData(_gdata.model_userdata.getCurSelectPoi());
+              }break;
+              
+            case "move":
+              {
+                
               }break;
           }
         
