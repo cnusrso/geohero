@@ -75,13 +75,7 @@ define(["amap"], {
 						singleton.pFuncEventCallback.call("hotspotclick",result);	
 				}
 			
-// 			singleton.placeSearch.getDetails(result.id, function(status, result) {
-// 				if (status === 'complete' && result.info === 'OK') {
-// 					console.log("poi details:", result);
-// 				} else {
-// 					console.log("poi details failed:", status, result);
-// 				}
-// 			});
+
 		});
 		this.maper.on('movestart', function(e) {
 			// console.log(e);
@@ -126,6 +120,20 @@ define(["amap"], {
 		this.pFuncEventCallback = pCallback;
 		this.pFuncEventCallbackOwner = pCallbackOwner;
 		
+	},
+	
+	getPoiDetails: function(poiid, pCallback, pCallbackOwner) {
+		this.placeSearch.getDetails(poiid, function(status, result) {
+			
+// 			console.log("getPoiDetails:", status, result);
+			
+			
+			if(pCallbackOwner != null){
+				pCallback.call(pCallbackOwner,status,result);
+			} else {
+				pCallback.call(status,result);	
+			}
+		});
 	},
 	
 	startGetWalkingData: function(from,to,pCallback,pCallbackOwner){

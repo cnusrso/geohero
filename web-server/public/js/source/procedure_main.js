@@ -193,52 +193,106 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
   },
   
   getPoiData: function(pPoiData) {
+    var singleton = this;
      _gdata.model_util.BlockMsgShow("...");
 
-    var singleton = this;
-    _gdata.model_netmgr.req_GetPoiData(
-      _gdata.model_userdata.userdata.acckey,
-      _gdata.model_userdata.userdata.account,
-      pPoiData.id,
-      function(data) {
-        _gdata.model_util.BlockMsgHide();
-        console.log("data.msg",data);
-        
-        _gdata.model_jq("#dialog-CommonList").dialog( "option", "title", "巢穴信息" );
-        _gdata.model_jq("#dialog-CommonList ul").empty();
-        var index = 1;
-        
-        if (data.code == 200) {
-          var pDataServer = JSON.parse(data.msg);
-          var poiname = decodeURI(pDataServer.datas[0]._name);
-          console.log("poi name:",poiname);
-          
-          if(pDataServer.datas[0].ownerid >= 0){
-             _gdata.model_notify.showNotify("Info", "有人占领的巢穴");
-            
-            
-            _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'名字:'+poiname+'<\/li>');
+    _gdata.model_map.getPoiDetails(pPoiData.id,function(poidetail_status, poidetail_result){
+// 			console.log("poidetail_result",poidetail_status,poidetail_result);
+			
+      if (poidetail_status === 'complete' && poidetail_result.info === 'OK') {
+				_gdata.model_netmgr.req_GetPoiData(
+          _gdata.model_userdata.userdata.acckey,
+          _gdata.model_userdata.userdata.account,
+          pPoiData.id,
+          function(data) {
+            _gdata.model_util.BlockMsgHide();
+            console.log("data.msg",data);
+
+            _gdata.model_jq("#dialog-CommonList").dialog( "option", "title", "巢穴信息" );
+            _gdata.model_jq("#dialog-CommonList ul").empty();
+            var index = 1;
+
+            if (data.code == 200) {
+              var pDataServer = JSON.parse(data.msg);
+              var poiname = decodeURI(pDataServer.datas[0]._name);
+
+              if(pDataServer.datas[0].ownerid >= 0){
+                 _gdata.model_notify.showNotify("Info", "有人占领的巢穴");
+
+
+                _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'名字:'+poiname+'<\/li>');
+                _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'级别:'+1+'<\/li>');
+                _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'描述:'+poidetail_result.poiList.pois[0].type+'<\/li>');
+                _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'占有者ID:'+pDataServer.datas[0].ownerid+'<\/li>');
+                _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'小小猫 1级<\/li>');
+                _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'小小狗 1级<\/li>');
+
+                _gdata.model_jq("#dialog-CommonList").dialog(
+                  "option", 
+                  "buttons", 
+                  [
+                    {
+                      text: "攻占",
+                      icons: {
+                        primary: "ui-icon-arrowthick-1-e"
+                      },
+                      click: function() {
+                        _gdata.model_jq("#dialog-CommonList").dialog("close");
+                        _gdata.model_notify.showNotify("Info", "开始攻占了！！！");
+                      }
+                    }
+                  ]
+                );
+
+
+
+                _gdata.model_jq("#dialog-CommonList").dialog("open");
+                return;
+               }        
+            } else if(data.code == 201) {
+              _gdata.model_notify.showNotify("Info", "无人占领的巢穴");
+
+            }
+
+            // 显示空据点界面。
+            _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'名字:'+pPoiData.name+'<\/li>');
             _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'级别:'+1+'<\/li>');
-            _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'占有者ID:'+pDataServer.datas[0].ownerid+'<\/li>');
-            
-            
+            _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'描述:'+poidetail_result.poiList.pois[0].type+'<\/li>');
+            _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'占有者ID:？？？'+'<\/li>');
+            _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'小小猫 1级<\/li>');
+            _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'小小狗 1级<\/li>');
+
+            _gdata.model_jq("#dialog-CommonList").dialog(
+              "option", 
+              "buttons", 
+              [
+                {
+                  text: "霸占",
+                  icons: {
+                    primary: "ui-icon-arrowthick-1-e"
+                  },
+                  click: function() {
+                    _gdata.model_jq("#dialog-CommonList").dialog("close");
+                    _gdata.model_notify.showNotify("Info", "开始霸占了！！！");
+                  }
+                }
+              ]
+            );
+
             _gdata.model_jq("#dialog-CommonList").dialog("open");
-            return;
-           }        
-        } else if(data.code == 201) {
-          _gdata.model_notify.showNotify("Info", "无人占领的巢穴");
-          
-        }
+          },
+          singleton
+        );
         
-        // 显示空据点界面。
-        _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'名字:'+pPoiData.name+'<\/li>');
-        _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'级别:'+1+'<\/li>');
-        _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'占有者ID:？？？'+'<\/li>');
         
-        _gdata.model_jq("#dialog-CommonList").dialog("open");
-      },
-      singleton
-    );
+			} else {
+        _gdata.model_util.BlockMsgHide();
+        _gdata.model_notify.showNotify("Info", "无法得到巢穴的详细信息");
+			}
+    },singleton);
+    
+    
+    
   },
   
   onTeleportToPoi: function(pPoiData) {
