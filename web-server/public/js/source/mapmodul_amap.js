@@ -66,7 +66,7 @@ define(["amap"], {
 				}
     	});
 		this.maper.on('hotspotclick', function(result) {
-			// console.log("poi search begin:", result);
+// 			console.log("hotspotclick:", result);
 			if(singleton.pFuncEventCallback != null)
 				{
 					if(singleton.pFuncEventCallbackOwner != null)

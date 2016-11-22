@@ -197,7 +197,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
      _gdata.model_util.BlockMsgShow("...");
 
     _gdata.model_map.getPoiDetails(pPoiData.id,function(poidetail_status, poidetail_result){
-// 			console.log("poidetail_result",poidetail_status,poidetail_result);
+			console.log("poidetail_result",poidetail_status,poidetail_result);
 			
       if (poidetail_status === 'complete' && poidetail_result.info === 'OK') {
 				_gdata.model_netmgr.req_GetPoiData(
@@ -212,9 +212,13 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
             _gdata.model_jq("#dialog-CommonList ul").empty();
             var index = 1;
 
+						var poitypedata = poidetail_result.poiList.pois[0].type;
+						var poitypearray = poitypedata.split(";");
+						var poiname = poidetail_result.poiList.pois[0].name;
+						var poiaddress = poidetail_result.poiList.pois[0].address;
             if (data.code == 200) {
               var pDataServer = JSON.parse(data.msg);
-              var poiname = decodeURI(pDataServer.datas[0]._name);
+//               var poiname = decodeURI(pDataServer.datas[0]._name);
 
               if(pDataServer.datas[0].ownerid >= 0){
                  _gdata.model_notify.showNotify("Info", "有人占领的巢穴");
@@ -222,10 +226,17 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 
                 _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'名字:'+poiname+'<\/li>');
                 _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'级别:'+1+'<\/li>');
-                _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'描述:'+poidetail_result.poiList.pois[0].type+'<\/li>');
+								var ntypeindex = 1;
+								poitypearray.forEach(function(e){
+									if(e !== ""){
+										_gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'描述'+ntypeindex+':'+e+'<\/li>');
+										ntypeindex++;
+									}
+								});
+								if(poiaddress !== "")
+									_gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'地址:'+poiaddress+'<\/li>');
                 _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'占有者ID:'+pDataServer.datas[0].ownerid+'<\/li>');
                 _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'小小猫 1级<\/li>');
-                _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'小小狗 1级<\/li>');
 
                 _gdata.model_jq("#dialog-CommonList").dialog(
                   "option", 
@@ -255,12 +266,19 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
             }
 
             // 显示空据点界面。
-            _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'名字:'+pPoiData.name+'<\/li>');
+            _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'名字:'+poiname+'<\/li>');
             _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'级别:'+1+'<\/li>');
-            _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'描述:'+poidetail_result.poiList.pois[0].type+'<\/li>');
+           	var temptypeindex = 1;
+						poitypearray.forEach(function(e){
+							if(e !== ""){
+								_gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'描述'+temptypeindex+':'+e+'<\/li>');
+								temptypeindex++;
+							}
+						});
+						if(poiaddress != "")
+							_gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'地址:'+poiaddress+'<\/li>');
             _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'占有者ID:？？？'+'<\/li>');
             _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'小小猫 1级<\/li>');
-            _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'小小狗 1级<\/li>');
 
             _gdata.model_jq("#dialog-CommonList").dialog(
               "option", 
