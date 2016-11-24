@@ -1,0 +1,10 @@
+#INT	STRING	INT	INT	STRING
+#id	名称	初始maxhp	每打一次奖励金币	Icon
+1	子鼠丑牛	100	100	monster1
+2	寅虎卯兔	101	100	monster2
+3	辰龙巳蛇	102	100	monster3
+4	午马未羊	103	100	monster4
+5	申猴酉鸡	104	100	monster5
+6	戌狗亥猪	105	100	monster6
+7	甲乙丙丁	106	100	monster7
+8	戊己庚辛	107	100	monster8
