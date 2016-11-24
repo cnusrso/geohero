@@ -18,7 +18,7 @@ myrediscl.on("error", function (err) {
 // test csv parse...
 if(0)
 	{
-		var pCSV = myBabyParse.parse("INT	FLOAT	STRING\n#ID	SPEED	NAME\n0	2.3	abcd\n",{comments:true});
+		var pCSV = myBabyParse.parseFiles(process.cwd()+"/../shared/tables/baseinfo.txt",{comments:true});
 		console.log("aaaaaaaaaaaaaaaaaaaaaaa",pCSV);
 	}
 

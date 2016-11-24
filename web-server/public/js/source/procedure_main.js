@@ -225,7 +225,6 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 
 
                 _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'名字:'+poiname+'<\/li>');
-                _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'级别:'+1+'<\/li>');
 								var ntypeindex = 1;
 								poitypearray.forEach(function(e){
 									if(e !== ""){
@@ -267,7 +266,6 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 
             // 显示空据点界面。
             _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'名字:'+poiname+'<\/li>');
-            _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'级别:'+1+'<\/li>');
            	var temptypeindex = 1;
 						poitypearray.forEach(function(e){
 							if(e !== ""){
