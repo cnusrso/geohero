@@ -52,7 +52,6 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
       }]
     });
 
-    
   },
   
   DoNetworkMsg:function(szType,pData){
@@ -200,22 +199,33 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 			console.log("poidetail_result",poidetail_status,poidetail_result);
 			
       if (poidetail_status === 'complete' && poidetail_result.info === 'OK') {
+				var poitypedata = poidetail_result.poiList.pois[0].type;
+				var poitypearray = poitypedata.split(";");
+				var poiname = poidetail_result.poiList.pois[0].name;
+				var poiaddress = poidetail_result.poiList.pois[0].address;
+				
+				var pPoiMainType = poitypearray[0];
+				if(poitypearray.length <= 0){
+					pPoiMainType = "";
+				}
+				
 				_gdata.model_netmgr.req_GetPoiData(
           _gdata.model_userdata.userdata.acckey,
           _gdata.model_userdata.userdata.account,
           pPoiData.id,
+					pPoiMainType,
           function(data) {
             _gdata.model_util.BlockMsgHide();
-            console.log("data.msg",data);
-
+            console.log("poi data from server",data);
+						var pExtDataServer = JSON.parse(data.ext);
+						//console.log("pExtDataServer",pExtDataServer);
+						var pMaybeMonsterNames = pExtDataServer.monstername;
+						
             _gdata.model_jq("#dialog-CommonList").dialog( "option", "title", "巢穴信息" );
             _gdata.model_jq("#dialog-CommonList ul").empty();
             var index = 1;
 
-						var poitypedata = poidetail_result.poiList.pois[0].type;
-						var poitypearray = poitypedata.split(";");
-						var poiname = poidetail_result.poiList.pois[0].name;
-						var poiaddress = poidetail_result.poiList.pois[0].address;
+						
             if (data.code == 200) {
               var pDataServer = JSON.parse(data.msg);
 //               var poiname = decodeURI(pDataServer.datas[0]._name);
@@ -225,16 +235,14 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 
 
                 _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'名字:'+poiname+'<\/li>');
-								var ntypeindex = 1;
-								poitypearray.forEach(function(e){
-									if(e !== ""){
-										_gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'描述'+ntypeindex+':'+e+'<\/li>');
-										ntypeindex++;
-									}
-								});
+								if(pPoiMainType !== ""){
+									_gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'类型:'+pPoiMainType+'<\/li>');
+									_gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'占领金:'+pExtDataServer.basecost+'金币<\/li>');
+								}
 								if(poiaddress !== "")
 									_gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'地址:'+poiaddress+'<\/li>');
                 _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'占有者ID:'+pDataServer.datas[0].ownerid+'<\/li>');
+								
                 _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'小小猫 1级<\/li>');
 
                 _gdata.model_jq("#dialog-CommonList").dialog(
@@ -266,17 +274,18 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 
             // 显示空据点界面。
             _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'名字:'+poiname+'<\/li>');
-           	var temptypeindex = 1;
-						poitypearray.forEach(function(e){
-							if(e !== ""){
-								_gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'描述'+temptypeindex+':'+e+'<\/li>');
-								temptypeindex++;
-							}
-						});
-						if(poiaddress != "")
+						if(pPoiMainType !== ""){
+							_gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'类型:'+pPoiMainType+'<\/li>');
+							_gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'占领金:'+pExtDataServer.basecost+'金币<\/li>');
+						}           	
+						if(poiaddress !== "")
 							_gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'地址:'+poiaddress+'<\/li>');
-            _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'占有者ID:？？？'+'<\/li>');
-            _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'小小猫 1级<\/li>');
+            _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'无主☞地'+'<\/li>');
+            if(pMaybeMonsterNames.length > 0){
+							pMaybeMonsterNames.forEach(function(value,ii){
+								_gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'可能产生:('+parseInt(ii+1)+')'+value+'<\/li>');
+							});
+						}
 
             _gdata.model_jq("#dialog-CommonList").dialog(
               "option", 

@@ -227,7 +227,7 @@ define(['md5'], {
 	},
 	
 	// 由POI ID 得到对应的数据。。
-	req_GetPoiData: function(acckey, username,poiid, funcCallback, pCallOwner) {
+	req_GetPoiData: function(acckey, username, poiid, poitypetext, funcCallback, pCallOwner) {
 		this.checkConnect(function(szState){
 			if(szState == "reconnect")
 				{
@@ -239,6 +239,7 @@ define(['md5'], {
 					pMsg.acckey = acckey;
 					pMsg.username = username;
 					pMsg.poiid = poiid;
+					pMsg.poitypetext = poitypetext;
 
 
 					window.pomelo.request("connector.entryHandler.getPoiData", pMsg, function(data) {

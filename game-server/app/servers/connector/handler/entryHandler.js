@@ -15,12 +15,109 @@ myrediscl.on("error", function (err) {
 //     console.log("aaaaaaaaaaaa",err,typeof(reply),reply);
 // });
 
-// test csv parse...
-if(0)
+// begin tables ->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+// define tables struct...
+var pTable_baseinfo = null;
+var t_baseinfo = new Map();
+t_baseinfo.set("index",0);
+t_baseinfo.set("typetext",1);
+t_baseinfo.set("cost",2);
+t_baseinfo.set("inchptime",3);
+t_baseinfo.set("inchpvel",4);
+t_baseinfo.set("inclvltime",5);
+t_baseinfo.set("inclvlvel",6);
+t_baseinfo.set("inclvlrate",7);
+t_baseinfo.set("monsterids",8);
+
+var pTable_monster = null;
+var t_monster  = new Map();
+t_monster.set("index",0);
+t_monster.set("name",1);
+t_monster.set("hp",2);
+t_monster.set("award",3);
+t_monster.set("icon",4);
+
+// read tables......
+if(1)
 	{
-		var pCSV = myBabyParse.parseFiles(process.cwd()+"/../shared/tables/baseinfo.txt",{comments:true});
-		console.log("aaaaaaaaaaaaaaaaaaaaaaa",pCSV);
+		pTable_baseinfo = myBabyParse.parseFiles(process.cwd()+"/../shared/tables/baseinfo.txt",{comments:true});
+		console.log("pTable_baseinfo",pTable_baseinfo);
+		pTable_monster = myBabyParse.parseFiles(process.cwd()+"/../shared/tables/monster.txt",{comments:true});
+		console.log("pTable_monster",pTable_monster);
 	}
+
+// some func for tables;
+function myTable_GetBaseIndexByTypeText(sType){
+	var typetext_id = t_baseinfo.get("typetext");
+	for (var j=0;j<pTable_baseinfo.data.length;j++){
+		var element = pTable_baseinfo.data[j];
+		if(element[typetext_id] == sType){
+				var index_id = t_baseinfo.get("index");
+				return parseInt(element[index_id]);
+			}
+	}
+	return 0;
+}
+
+function myTable_GetBaseCostByIndex(nIndex){
+	var index_id = t_baseinfo.get("index");
+	for (var i=0;i<pTable_baseinfo.data.length;i++){
+		var element = pTable_baseinfo.data[i];
+		var nCurIndex = parseInt(element[index_id]);
+		if(nCurIndex == nIndex){
+			var cost_id = t_baseinfo.get("cost");
+			return element[cost_id];
+		}
+	}
+	return 0;
+}
+
+function myTable_GetMonsterNameById(nId){
+	var index_id = t_monster.get("index");
+	for (var j=0;j<pTable_monster.data.length;j++){
+		var element = pTable_monster.data[i];
+		if(element[index_id] == nId){
+			var name_id = t_monster.get("name");
+			return element[name_id];
+		}
+	}
+	return "";
+}
+
+function myTable_GetMaybeMonsterNamesByBaseIndex(nIndex){
+	var index_id = t_baseinfo.get("index");
+	for (var i=0;i<pTable_baseinfo.data.length;i++){
+		var element = pTable_baseinfo.data[i];
+		var nCurIndex = parseInt(element[index_id]);
+		if(nCurIndex == nIndex){
+			var monsterids_id = t_baseinfo.get("monsterids");
+			var strMonsterids = element[monsterids_id];
+			var pMonsterIds = strMonsterids.split("#");
+			var pMonsterNames = [];
+			
+			var mindex_id = t_monster.get("index");
+			var mname_id = t_monster.get("name");
+			pMonsterIds.forEach(function(mm){
+				for (var j=0;j<pTable_monster.data.length;j++){
+					if(pTable_monster.data[j][mindex_id] == mm){
+						pMonsterNames.push(pTable_monster.data[j][mname_id]);
+						break;
+					}
+				}
+			});
+			return pMonsterNames;
+		}
+	}
+	return [];	
+}
+
+// console.log("myTable_GetBaseIndexByTypeText",myTable_GetBaseIndexByTypeText("金融保险服务"));
+// console.log("myTable_GetMaybeMonsterNamesByBaseIndex",myTable_GetMaybeMonsterNamesByBaseIndex(1));
+
+// end tables <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<-
+
+
 
 
 AWS.config.loadFromPath('./config/aws-config_testuser1.json');
@@ -693,16 +790,56 @@ Handler.prototype.getPoiData = function(msg,session,next) {
 			}
 			
 			check_HasPoi(msg.poiid,function(szResult,pPoiData){
-				if(szResult == "success"){
-					next(null, {
-							code: 200,
-							msg: JSON.stringify(pPoiData)
-						});
-				} else {
-					console.log('Not Find Poi',szResult);
-					next(null,{code:201,msg:'Not Find Poi->'+szResult});
-					return;
+				
+				var pExtData = {};
+				if(msg.poitypetext === ""){
+					pExtData.basetypeindex = 0;
+					pExtData.monstername="";
+					
+					if(szResult == "success"){
+						console.log("poi data:->",pPoiData);
+						next(null, {
+								code: 200,
+								msg: JSON.stringify(pPoiData),
+								ext: JSON.stringify(pExtData)
+							});
+					} else {
+						console.log('Not Find Poi',szResult,pExtData);
+						next(null,{code:201,msg:'Not Find Poi->'+szResult,ext: JSON.stringify(pExtData)});
+						return;
+					}
+				}else{
+					var key1 = msg.poitypetext+"_data";
+					redis_GetDataByKey(key1,function(sErr,sData){
+						if(sErr != null || sData == null){
+							var nBaseIndex = myTable_GetBaseIndexByTypeText(msg.poitypetext);
+							var nBaseCost = myTable_GetBaseCostByIndex(nBaseIndex);
+							pExtData.basetypeindex = nBaseIndex;
+							pExtData.basecost = nBaseCost;
+							var pMonsterNames = myTable_GetMaybeMonsterNamesByBaseIndex(pExtData.basetypeindex);
+							pExtData.monstername = pMonsterNames;
+							
+							redis_SetDataByKey(key1,JSON.stringify(pExtData));
+						}else{
+							pExtData = JSON.parse(sData);
+						}
+						if(szResult == "success"){
+							console.log("poi data:->",pPoiData);
+							next(null, {
+									code: 200,
+									msg: JSON.stringify(pPoiData),
+									ext: JSON.stringify(pExtData)
+								});
+						} else {
+							console.log('Not Find Poi',szResult,pExtData);
+							next(null,{code:201,msg:'Not Find Poi->'+szResult,ext: JSON.stringify(pExtData)});
+							return;
+						}
+					});
+					
 				}
+				
+				
 			});
 			
 		} else {
