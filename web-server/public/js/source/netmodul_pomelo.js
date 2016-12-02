@@ -231,7 +231,7 @@ define(['md5'], {
 		this.checkConnect(function(szState){
 			if(szState == "reconnect")
 				{
-					this.req_GetPoiData(acckey, username,poiid, funcCallback,pCallOwner);
+					this.req_GetPoiData(acckey, username,poiid, poitypetext, funcCallback,pCallOwner);
 				}
 			else if(szState == "connect")
 				{
@@ -251,6 +251,54 @@ define(['md5'], {
 		},this);
 	},
 	
+	// 由POI ID 发出要占领一个空的基地
+	req_OccupyEmptyBase: function(acckey, username, poiid, funcCallback, pCallOwner) {
+		this.checkConnect(function(szState){
+			if(szState == "reconnect")
+				{
+					this.req_OccupyEmptyBase(acckey, username,poiid, funcCallback,pCallOwner);
+				}
+			else if(szState == "connect")
+				{
+					var pMsg = {};
+					pMsg.acckey = acckey;
+					pMsg.username = username;
+					pMsg.poiid = poiid;
+
+
+					window.pomelo.request("connector.entryHandler.occupyEmptyBase", pMsg, function(data) {
+
+						funcCallback.call(pCallOwner, data);
+
+					});
+				}
+		},this);
+	},
+	
+	// 由POI ID 发出要攻打一个有主基地
+	req_AttackBase: function(acckey, username, poiid_source, poiid_target, funcCallback, pCallOwner) {
+		this.checkConnect(function(szState){
+			if(szState == "reconnect")
+				{
+					this.req_AttackBase(acckey, username,poiid_source, poiid_target, funcCallback,pCallOwner);
+				}
+			else if(szState == "connect")
+				{
+					var pMsg = {};
+					pMsg.acckey = acckey;
+					pMsg.username = username;
+					pMsg.poiid_source = poiid_source;
+					pMsg.poiid_target = poiid_target;
+
+
+					window.pomelo.request("connector.entryHandler.attackBase", pMsg, function(data) {
+
+						funcCallback.call(pCallOwner, data);
+
+					});
+				}
+		},this);
+	},
 	
 	
 });
