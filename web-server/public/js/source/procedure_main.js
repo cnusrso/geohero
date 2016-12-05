@@ -299,6 +299,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
                   click: function() {
                     _gdata.model_jq("#dialog-CommonList").dialog("close");
                     _gdata.model_notify.showNotify("Info", "开始霸占了！！！");
+										singleton.onOccupyEmptyPoi(pPoiData);
                   }
                 }
               ]
@@ -320,6 +321,28 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
     
   },
   
+	onOccupyEmptyPoi: function(pPoiData){
+		_gdata.model_util.BlockMsgShow("霸占中...");
+		
+		var singleton = this;
+    _gdata.model_netmgr.req_OccupyEmptyBase(
+      _gdata.model_userdata.userdata.acckey,
+      _gdata.model_userdata.userdata.account,
+      pPoiData.id,
+      function(data) {
+        _gdata.model_util.BlockMsgHide();
+        if (data.code == 200) {
+          _gdata.model_notify.showNotify("信息", "霸占成功");
+
+        } else {
+          _gdata.model_notify.showNotify("信息", "霸占失败("+data.code+")"+data.msg);
+        }
+      },
+      singleton
+    );
+		
+	},
+	
   onTeleportToPoi: function(pPoiData) {
     
     _gdata.model_util.BlockMsgShow("Teleport To...");

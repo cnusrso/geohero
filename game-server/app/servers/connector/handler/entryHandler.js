@@ -112,6 +112,36 @@ function myTable_GetMaybeMonsterNamesByBaseIndex(nIndex){
 	return [];	
 }
 
+function myTable_RandomOneMonsterByBaseIndex(nIndex){
+	var index_id = t_baseinfo.get("index");
+	var monsterids_id = t_baseinfo.get("monsterids");
+	var mindex_id = t_monster.get("index");
+	
+	for (var i=0;i<pTable_baseinfo.data.length;i++){
+		var element = pTable_baseinfo.data[i];
+		var nCurIndex = parseInt(element[index_id]);
+		if(nCurIndex == nIndex){
+			var strMonsterids = element[monsterids_id];
+			var pMonsterIds = strMonsterids.split("#");
+			
+			var nRandomIndex = Math.floor(Math.random() * pMonsterIds.length);			
+			var nRandomMonsterIndex = pMonsterIds[nRandomIndex];
+			for (var j=0;j<pTable_monster.data.length;j++){
+				if(pTable_monster.data[j][mindex_id] == nRandomMonsterIndex){	
+					return {
+						id:nRandomMonsterIndex,
+						name:pTable_monster.data[j][t_monster.get("name")],
+						hp:pTable_monster.data[j][t_monster.get("hp")],
+						award:pTable_monster.data[j][t_monster.get("award")],
+						icon:pTable_monster.data[j][t_monster.get("icon")]
+					};
+				}
+			}
+		}
+	}
+	return {};	
+}
+
 // console.log("myTable_GetBaseIndexByTypeText",myTable_GetBaseIndexByTypeText("金融保险服务"));
 // console.log("myTable_GetMaybeMonsterNamesByBaseIndex",myTable_GetMaybeMonsterNamesByBaseIndex(1));
 
@@ -792,6 +822,7 @@ Handler.prototype.getPoiData = function(msg,session,next) {
 			check_HasPoi(msg.poiid,function(szResult,pPoiData){
 				
 				var pExtData = {};
+				// poi 类型是空的时候
 				if(msg.poitypetext === ""){
 					pExtData.basetypeindex = 0;
 					pExtData.monstername="";
@@ -820,6 +851,7 @@ Handler.prototype.getPoiData = function(msg,session,next) {
 							pExtData.monstername = pMonsterNames;
 							
 							redis_SetDataByKey(key1,JSON.stringify(pExtData));
+							redis_SetDataByKey(msg.poiid+"_extdata",JSON.stringify(pExtData));
 						}else{
 							pExtData = JSON.parse(sData);
 						}
@@ -848,6 +880,164 @@ Handler.prototype.getPoiData = function(msg,session,next) {
 			return;
 		}
 	});
+};
+
+// 占领一个空据点
+Handler.prototype.occupyEmptyBase = function(msg,session,next) {
+	if(msg.acckey === undefined)
+	{
+		console.log('Not Find "AccKey"');
+		next(null, {code: 202, msg: 'Not Defined AccKey'});
+		return;
+	}
+	if(msg.username === undefined)
+	{
+		console.log('Not Find "username"');
+		next(null, {code: 202, msg: 'Not Defined username'});
+		return;
+	}
+	if(msg.poiid === undefined)
+	{
+		console.log('Not Find "poiid"');
+		next(null, {code: 202, msg: 'Not Defined poiid'});
+		return;
+	}
 	
+	
+	check_HasUser(msg.username,function(szResult,pUserData){
+		if (szResult == "success") {
+			if (msg.acckey != pUserData.datas[0].loginkey) {
+				next(null, {
+					code: 203,
+					msg: 'AccKey Is Error'
+				});
+				return;
+			}
+			
+			check_HasPoi(msg.poiid,function(szResult,pPoiData){
+				
+				if(szResult == "success"){// 有记录					
+					if(pPoiData.datas[0].ownerid > 0){// 是否有人占领
+						next(null, {code: 204,	msg: 'Has Man Occupyed'});
+						return;
+					}
+				} else {// 未记录的点，可以占
+					console.log('Not Find Poi',szResult,pPoiData);
+				}
+				// find poi type by poi id
+				redis_GetDataByKey(msg.poiid+"_extdata",function(sErr,sData){
+// 					if(sErr != null || sData == null){
+// 						next(null, {code: 205,	msg: 'Not Find Poi In Cache'});
+// 						return;
+// 					}else{
+// 						if(sData == "null"){
+// 							next(null, {code: 206,	msg: 'Poi Type Is Null'});
+// 							return;
+// 						}else{
+// 							var pPoiTypeText = sData;
+// 							var key1 = pPoiTypeText+"_data";
+// 							redis_GetDataByKey(key1,function(sErr,sData){
+								var pExtData = {};
+								if(sErr != null || sData == null){
+									next(null, {code: 207,	msg: 'Not Find Poi ExtData'});
+									return;
+								}else{
+									pExtData = JSON.parse(sData);
+								}
+								if(pUserData.datas[0].money < pExtData.basecost){
+									next(null, {code: 208,	msg: 'Money Not Enough'});
+									return;
+								}
+
+								// 更新用户的钱
+								var pNewMoney = pUserData.datas[0].money-pExtData.basecost;
+								var pInsertData = {
+									_id:pUserData.datas[0]._id,
+									money:pNewMoney,
+									loginkey:msg.acckey
+								};
+								var pData = JSON.stringify(pInsertData);
+								yuntu_UpdateNewData(sTable_t_account,pData,function(nResult,sData){
+									if(nResult == 1){
+										var pResult = JSON.parse(sData);
+										if(pResult.status == 1)	{
+											// update newest money for redis..
+											pUserData.datas[0].money = pNewMoney;
+											redis_SetDataByKey(msg.username,JSON.stringify(pUserData));
+
+											// 随机产生一个怪数据
+											var pNewMonsterData = myTable_RandomOneMonsterByBaseIndex(pExtData.basetypeindex);
+											
+											// 进行占领操作
+											if(szResult == "success"){// 有记录进行更新
+
+												pPoiData.datas[0].ownerid = pUserData.datas[0]._id;
+											} else {// 未记录的点，创建新的
+												
+												var nCurTime = myfun_getDateTimeNumber();
+												var szAccKey = myfun_crypto(msg.username+nCurTime.toString());
+												var pInsertData = {
+													_name:0,
+													_location:"100,31",
+													poiid:msg.poiid,
+													ownerid:pUserData.datas[0]._id,
+													typeid:pExtData.basetypeindex,
+													occupytime:nCurTime,
+													battleovertime:nCurTime,
+													battlestatus:0,
+													monsterid:pNewMonsterData.id,
+													monsterlevel:1,
+													monsterhp:pNewMonsterData.hp,
+												};
+												var pData = JSON.stringify(pInsertData);
+												yuntu_AddNewData(sTable_t_poi,pData,function(nResult,pResultBody){
+													if (nResult == 1) {
+														var pResult = JSON.parse(pResultBody);
+														if (pResult.status == 1) {
+															// add new poi data ok
+															next(null, {
+																code: 200,
+																account: msg.username,
+																msg: szAccKey
+															});
+															// update newest poi data for redis..
+															pPoiData = {datas:[]};
+															pPoiData.datas[0] = pInsertData;
+															redis_SetDataByKey(msg.poiid,JSON.stringify(pPoiData));
+															
+														} else {
+															next(null, {
+																code: 211,
+																msg: pResultBody
+															});
+														}
+													} else {
+														next(null, {
+																code: 212,
+																msg: pResultBody
+															});
+													}
+												});
+											}
+										}	else {
+											next(null, {code: 213,	msg: pResult.info});
+											return;
+										}
+									} else {
+										next(null, {code: 214,	msg: "system failed"});
+										return;
+									}					
+								});
+							});
+// 						}
+// 					}
+// 				});
+			});
+		} else {
+			console.log('Not Find User');
+			next(null,{code:204,msg:'Not Find User'});
+			return;
+		}
+	});	
 	
 };
