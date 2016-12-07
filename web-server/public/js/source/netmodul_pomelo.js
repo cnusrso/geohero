@@ -252,11 +252,11 @@ define(['md5'], {
 	},
 	
 	// 由POI ID 发出要占领一个空的基地
-	req_OccupyEmptyBase: function(acckey, username, poiid, funcCallback, pCallOwner) {
+	req_OccupyEmptyBase: function(acckey, username, poiid, poitypeid, poiname, poipostext,funcCallback, pCallOwner) {
 		this.checkConnect(function(szState){
 			if(szState == "reconnect")
 				{
-					this.req_OccupyEmptyBase(acckey, username,poiid, funcCallback,pCallOwner);
+					this.req_OccupyEmptyBase(acckey, username,poiid, poitypeid, funcCallback,pCallOwner);
 				}
 			else if(szState == "connect")
 				{
@@ -264,6 +264,9 @@ define(['md5'], {
 					pMsg.acckey = acckey;
 					pMsg.username = username;
 					pMsg.poiid = poiid;
+					pMsg.poitypeid = poitypeid;
+					pMsg.poiname = poiname;
+					pMsg.poipos = poipostext;
 
 
 					window.pomelo.request("connector.entryHandler.occupyEmptyBase", pMsg, function(data) {

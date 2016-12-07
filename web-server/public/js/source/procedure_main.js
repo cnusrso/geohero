@@ -202,6 +202,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 				var poitypedata = poidetail_result.poiList.pois[0].type;
 				var poitypearray = poitypedata.split(";");
 				var poiname = poidetail_result.poiList.pois[0].name;
+				var poipostext = pPoiData.lnglat.lng+","+pPoiData.lnglat.lat;
 				var poiaddress = poidetail_result.poiList.pois[0].address;
 				
 				var pPoiMainType = poitypearray[0];
@@ -231,19 +232,21 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 //               var poiname = decodeURI(pDataServer.datas[0]._name);
 
               if(pDataServer.datas[0].ownerid >= 0){
-                 _gdata.model_notify.showNotify("Info", "有人占领的巢穴");
-
+                _gdata.model_notify.showNotify("Info", "有人占领的巢穴");
+								
+								var pOwnerDataServer = JSON.parse(data.owner);
+								var pMonsterDataServer = JSON.parse(data.monster);
 
                 _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'名字:'+poiname+'<\/li>');
 								if(pPoiMainType !== ""){
 									_gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'类型:'+pPoiMainType+'<\/li>');
-									_gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'占领金:'+pExtDataServer.basecost+'金币<\/li>');
+// 									_gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'占领金:'+pExtDataServer.basecost+'金币<\/li>');
 								}
 								if(poiaddress !== "")
 									_gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'地址:'+poiaddress+'<\/li>');
-                _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'占有者ID:'+pDataServer.datas[0].ownerid+'<\/li>');
+                _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'占有者:'+pOwnerDataServer.name+'<\/li>');
 								
-                _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'小小猫 1级<\/li>');
+                _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'怪物: \n'+pMonsterDataServer.name+'	(生命:'+pMonsterDataServer.hp+'/'+pMonsterDataServer.maxhp+') 级别:'+pMonsterDataServer.lvl+'<\/li>');
 
                 _gdata.model_jq("#dialog-CommonList").dialog(
                   "option", 
@@ -299,7 +302,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
                   click: function() {
                     _gdata.model_jq("#dialog-CommonList").dialog("close");
                     _gdata.model_notify.showNotify("Info", "开始霸占了！！！");
-										singleton.onOccupyEmptyPoi(pPoiData);
+										singleton.onOccupyEmptyPoi(pPoiData.id,pExtDataServer.basetypeindex,poiname,poipostext);
                   }
                 }
               ]
@@ -321,14 +324,17 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
     
   },
   
-	onOccupyEmptyPoi: function(pPoiData){
+	onOccupyEmptyPoi: function(npoiid,npoitypeid,spoiname,spoipostext){
 		_gdata.model_util.BlockMsgShow("霸占中...");
 		
 		var singleton = this;
     _gdata.model_netmgr.req_OccupyEmptyBase(
       _gdata.model_userdata.userdata.acckey,
       _gdata.model_userdata.userdata.account,
-      pPoiData.id,
+      npoiid,
+			npoitypeid,
+			spoiname,
+			spoipostext,
       function(data) {
         _gdata.model_util.BlockMsgHide();
         if (data.code == 200) {
