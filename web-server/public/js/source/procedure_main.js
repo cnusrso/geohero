@@ -234,6 +234,8 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
               if(pDataServer.datas[0].ownerid >= 0){
                 _gdata.model_notify.showNotify("Info", "有人占领的巢穴");
 								
+								var bIsMyBase = _gdata.model_userdata.userdata.id == pDataServer.datas[0].ownerid;
+								
 								var pOwnerDataServer = JSON.parse(data.owner);
 								var pMonsterDataServer = JSON.parse(data.monster);
 
@@ -244,30 +246,39 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 								}
 								if(poiaddress !== "")
 									_gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'地址:'+poiaddress+'<\/li>');
-                _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'占有者:'+pOwnerDataServer.name+'<\/li>');
+								var sOwnerText = '占有者:'+pOwnerDataServer.name;
+								if(bIsMyBase){
+									sOwnerText += '(自己)';
+								}
+                _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+sOwnerText+'<\/li>');
 								
                 _gdata.model_jq("#dialog-CommonList ul").append('<li id=\"'+(index++)+'\" >'+'怪物: \n'+pMonsterDataServer.name+'	(生命:'+pMonsterDataServer.hp+'/'+pMonsterDataServer.maxhp+') 级别:'+pMonsterDataServer.lvl+'<\/li>');
 
-                _gdata.model_jq("#dialog-CommonList").dialog(
-                  "option", 
-                  "buttons", 
-                  [
-                    {
-                      text: "攻占",
-                      icons: {
-                        primary: "ui-icon-arrowthick-1-e"
-                      },
-                      click: function() {
-                        _gdata.model_jq("#dialog-CommonList").dialog("close");
-                        _gdata.model_notify.showNotify("Info", "开始攻占了！！！");
-                      }
-                    }
-                  ]
-                );
-
-
-
+								var sBtnText = "攻占";
+								if(bIsMyBase === true){
+									sBtnText = "确定";
+								}
+								_gdata.model_jq("#dialog-CommonList").dialog(
+									"option", 
+									"buttons", 
+									[
+										{
+											text: sBtnText,
+											icons: {
+												primary: "ui-icon-arrowthick-1-e"
+											},
+											click: function() {
+												_gdata.model_jq("#dialog-CommonList").dialog("close");
+												if(bIsMyBase === true){
+													return;
+												}
+												_gdata.model_notify.showNotify("Info", "开始攻占了！！！");
+											}
+										}
+									]
+								);
                 _gdata.model_jq("#dialog-CommonList").dialog("open");
+								
                 return;
                }        
             } else if(data.code == 201) {
@@ -396,6 +407,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
         // has select birth position
         _gdata.model_notify.showNotify("Info", "Will Go To Last Position");
         var posarray = pData.data._location.split(',');
+				_gdata.model_userdata.userdata.id = pData.data._id;
         _gdata.model_userdata.userdata.curpos = new AMap.LngLat(parseFloat(posarray[0]), parseFloat(posarray[1]));
         _gdata.model_map.panTo(_gdata.model_userdata.userdata.curpos);
         _gdata.model_map.zoomTo(15);

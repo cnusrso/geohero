@@ -1,6 +1,7 @@
 
 define({
   userdata: {
+		id:0,
     account: "test1",
     sex: "0",
     acckey:"",
