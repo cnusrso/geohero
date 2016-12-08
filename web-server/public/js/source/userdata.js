@@ -8,6 +8,8 @@ define({
     enterTime:0,
 		curpos:null,
     curselectpoidata:null,
+		money:0,
+		nickname:"",
   },
 
   setEnterWorldOk: function(sAccount,sKey){

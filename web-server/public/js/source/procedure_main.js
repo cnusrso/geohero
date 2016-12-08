@@ -395,6 +395,10 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 
     if (pData.code == 200) {
 
+			_gdata.model_userdata.userdata.id = pData.data._id;
+			_gdata.model_userdata.userdata.money = pData.data.money;
+			_gdata.model_userdata.userdata.nickname = pData.data.nickname;
+			
       if (pData.data._name == "0") {
         _gdata.model_util.BlockMsgHide();
         
@@ -407,7 +411,8 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
         // has select birth position
         _gdata.model_notify.showNotify("Info", "Will Go To Last Position");
         var posarray = pData.data._location.split(',');
-				_gdata.model_userdata.userdata.id = pData.data._id;
+				
+				
         _gdata.model_userdata.userdata.curpos = new AMap.LngLat(parseFloat(posarray[0]), parseFloat(posarray[1]));
         _gdata.model_map.panTo(_gdata.model_userdata.userdata.curpos);
         _gdata.model_map.zoomTo(15);
@@ -429,6 +434,28 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
     }
   },
 
+	onGetUserPoisData(){
+		_gdata.model_util.BlockMsgShow("...");
+		var singleton = this;
+    _gdata.model_netmgr.req_getUserPoisData(
+      _gdata.model_userdata.userdata.acckey,
+      _gdata.model_userdata.userdata.account,
+      function(data) {
+        _gdata.model_util.BlockMsgHide();
+				console.log("mypois",data);
+        if (data.code == 200) {
+					// show dialog....
+					
+					
+					
+					
+        } else {
+        }
+      },
+      singleton
+    );
+		
+	},
 
 
   onMapEvent: function(sType, pPos) {
@@ -556,7 +583,8 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
         name: '退出',
         id: 1
       }, {
-        name: 'Go to My Location'
+        name: '关于自己',
+				id: 2
       }, {
         name: 'Modify Map Type'
       }, {
@@ -587,6 +615,9 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
               window.location.reload(true);
             }
             break;
+					case 2:{
+						singleton.onGetUserPoisData();						
+						}break;
           default:
             {
 

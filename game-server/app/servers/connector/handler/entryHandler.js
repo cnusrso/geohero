@@ -375,6 +375,39 @@ function check_HasPoi(szPoiId, funcCallback, pCallOwner) {
 	});
 }
 
+function check_GetUserPois(nUserId, funcCallback, pCallOwner) {
+	var sKey = "userid:"+"pois:"+toString(nUserId);
+	redis_GetDataByKey(sKey,function(sErr,sData){
+		if(sErr != null || sData == null){
+			var sFilter = "ownerid:"+nUserId;
+			yuntu_GetDataByFilter(sTable_t_poi,sFilter,function(nResult,sBody){
+				var szResult = "";
+				var pResult = {};
+				if(nResult == 1){
+					pResult = JSON.parse(sBody);
+					szResult = "success";
+					redis_SetDataByKey(sKey,sBody);
+				} else {
+					szResult = "system error";
+				}
+				if (pCallOwner != null && funcCallback != null) {
+					funcCallback.call(pCallOwner, szResult, pResult);
+				} else if (funcCallback != null) {
+					funcCallback(szResult, pResult);
+				}
+			});	
+		} else {
+			// poi data in redis
+			var pResult = JSON.parse(sData);
+			if (pCallOwner != null && funcCallback != null) {
+				funcCallback.call(pCallOwner, "success", pResult);
+			} else if (funcCallback != null) {
+				funcCallback("success", pResult);
+			}
+		}
+	});
+}
+
 function check_HasUser(szUserName, funcCallback, pCallOwner) {
 	redis_GetDataByKey(szUserName,function(sErr,sData){
 		if(sErr != null || sData == null){
@@ -700,6 +733,43 @@ Handler.prototype.get_UserData = function(msg, session, next) {
 			}
 // 			console.log("get user data name",decodeURI(pUserData.datas[0]._name));
 			next(null, {code: 200, data:pUserData.datas[0]});
+		} else {
+			next(null, {code: 201, msg: 'Not Find User'});
+		}
+	});
+};
+
+
+Handler.prototype.get_UserPoiData = function(msg, session, next) {
+	if(msg.acckey === undefined)
+	{
+		console.log('Not Find "AccKey"');
+		next(null, {code: 202, msg: 'Not Defined AccKey'});
+		return;
+	}
+	if(msg.username === undefined)
+	{
+		console.log('Not Find "username"');
+		next(null, {code: 202, msg: 'Not Defined username'});
+		return;
+	}
+	
+	check_HasUser(msg.username,function(szResult,pUserData){
+		if (szResult == "success") {
+			if (msg.acckey != pUserData.datas[0].loginkey) {
+				next(null, {code: 203,	msg: 'AccKey Is Error'});
+				return;
+			}
+			
+			// find all poi by user id
+			check_GetUserPois(pUserData.datas[0]._id,function(szResult,pPoisData){
+				if (szResult == "success") {
+					next(null, {code: 200,	msg: JSON.stringify(pPoisData)});
+				} else {
+					next(null, {code: 204,	msg: szResult});
+				}	
+			});
+			
 		} else {
 			next(null, {code: 201, msg: 'Not Find User'});
 		}
@@ -1071,7 +1141,7 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 													pPoiData.datas[0] = {};
 												}
 												pPoiData.datas[0].ownerid = pUpdateData.ownerid;
-												pPoiData.datas[0]._name = pUpdateData._name;
+												pPoiData.datas[0]._name = msg.poiname;
 												pPoiData.datas[0]._location = pUpdateData._location;
 												pPoiData.datas[0].occupytime = pUpdateData.occupytime;
 												pPoiData.datas[0].battleovertime = pUpdateData.battleovertime;
@@ -1125,7 +1195,7 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 													pPoiData.datas[0] = {};
 												}
 												pPoiData.datas[0].ownerid = pInsertData.ownerid;
-												pPoiData.datas[0]._name = pInsertData._name;
+												pPoiData.datas[0]._name = msg.poiname;
 												pPoiData.datas[0]._location = pInsertData._location;
 												pPoiData.datas[0].occupytime = pInsertData.occupytime;
 												pPoiData.datas[0].battleovertime = pInsertData.battleovertime;

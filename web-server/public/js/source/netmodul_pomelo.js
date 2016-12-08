@@ -173,6 +173,28 @@ define(['md5'], {
 		},this);
 	},
 	
+	req_getUserPoisData: function(acckey, username,funcCallback, pCallOwner) {
+		var singleton = this;
+		this.checkConnect(function(szState){
+			if(szState == "reconnect")
+				{
+					singleton.req_getUserPoisData(acckey, username,funcCallback,pCallOwner);
+				}
+			else if(szState == "connect")
+				{
+					var pMsg = {};
+					pMsg.acckey = acckey;
+					pMsg.username = username;
+
+					window.pomelo.request("connector.entryHandler.get_UserPoiData", pMsg, function(data) {
+
+						funcCallback.call(pCallOwner, data);
+
+					});
+				}
+		},this);
+	},
+	
 	// 设置首次出生位置信息
 	req_SetBirthPosition: function(acckey, username,lng, lat, name, funcCallback, pCallOwner) {
 		this.checkConnect(function(szState){
