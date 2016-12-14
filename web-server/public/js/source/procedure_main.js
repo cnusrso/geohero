@@ -445,11 +445,56 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 				console.log("mypois",data);
         if (data.code == 200) {
 					// show dialog....
-					
-					
-					
+					var pAllData = JSON.parse(data.msg);
+					if(pAllData.count > 0){
+						
+						var pDlg_ = _gdata.model_jq("#dialog-CommonList");
+						var pDlg_ul = _gdata.model_jq("#dialog-CommonList ul");
+						var winWidth=document.body.clientWidth||document.documentElement.clientWidth
+						pDlg_.dialog( "option", "width", winWidth/4 );
+						pDlg_.dialog( "option", "title", "我的巢穴" );
+            pDlg_ul.empty();
+            var index = 1;
+						
+						for (var j=0;j<pAllData.count;j++){
+							
+							var pName = decodeURI(pAllData.datas[j]._name);
+							var pPositions = pAllData.datas[j]._location;
+							pDlg_ul.append('<li id=\''+(index++)+'\' location=\''+pPositions+'\'>'+pName+' <\/li>');
+						}
+						
+						_gdata.model_jq("#dialog-CommonList-List li").click(function() {
+							var ppoipos = this.getAttribute('location');
+							var ppoiposarray = ppoipos.split(",");
+							var pposobj = new AMap.LngLat(parseFloat(ppoiposarray[0]), parseFloat(ppoiposarray[1]));
+							_gdata.model_map.panTo(pposobj);
+							_gdata.model_map.addClickOneMarker(pposobj, "在这里");
+						});
+						
+						pDlg_.dialog(
+							"option", 
+							"buttons", 
+							[
+								{
+									text: "知道了",
+									icons: {
+										primary: "ui-icon-arrowthick-1-e"
+									},
+									click: function() {
+										pDlg_.dialog("close");
+										
+									}
+								}
+							]
+						);
+						pDlg_.dialog("open");
+						
+					}else{
+						
+					}
 					
         } else {
+					
         }
       },
       singleton
@@ -583,7 +628,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
         name: '退出',
         id: 1
       }, {
-        name: '关于自己',
+        name: '我的巢穴',
 				id: 2
       }, {
         name: 'Modify Map Type'

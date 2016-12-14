@@ -225,13 +225,24 @@ function myfun_getDateTimeNumber() {
 }
 
 // begin redis function................................................
+// 预定义所用的key...
+
+var pRedisKeys = {
+	key_poiid_data:function(poiid){return "poiid:"+poiid.toString()+":data"},
+	key_poitypeid_extdata:function(typeid){return "poitypeid:"+typeid.toString()+":extdata"},
+	key_poitypetext_extdata:function(typetext){return "poitypetext:"+typetext.toString()+":extdata"},
+	
+	key_userid_pois:function(userid){return "userid:"+userid.toString()+":pois";},
+	key_userid_data:function(userid){return "userid:"+userid.toString()+":data"},
+	key_username_data:function(name){return "username:"+name+":data"},	
+};
+
 function redis_SetDataByKey(szKey,sData) {
 	myrediscl.set(szKey,sData);
 }
 function redis_GetDataByKey(szKey,funcCallback,pCallOwner) {
 	myrediscl.get(szKey, function(err, reply) {
 // 		console.log("find key result:->",szKey,err,reply);
-		
 		if (pCallOwner != null && funcCallback != null) {
 			funcCallback.call(pCallOwner, err, reply);
 		} else if (funcCallback != null) {

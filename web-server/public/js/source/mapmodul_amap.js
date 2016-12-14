@@ -220,8 +220,7 @@ define(["amap"], {
 		
 	},
 
-	addMarker:function(pos,szLabel,pExtData)
-	{
+	readyMarker:function(pos){
 		var singleton = this;
 
 		if(singleton.pMarker != null)
@@ -247,7 +246,32 @@ define(["amap"], {
 			singleton.pMarker.setPosition(pos);
 			singleton.pMarker.show();
 		}
-
+	},
+	
+	addClickOneMarker:function(pos,szLabel){
+		this.readyMarker(pos);
+		
+		var singleton = this;
+		singleton.pMarker.setLabel({
+				offset: new AMap.Pixel(20, 20),//修改label相对于maker的位置
+				content: szLabel
+		});
+		
+		// 处理点击事件
+		AMap.event.addListenerOnce(singleton.pMarker, 'click', function(data) {
+			singleton.pMarker.hide();
+		});
+		AMap.event.addListenerOnce(singleton.pMarker, 'touchend', function(data) {
+			singleton.pMarker.hide();
+		});
+		return singleton.pMarker;		
+	},
+	
+	addMarker:function(pos,szLabel,pExtData)
+	{
+		this.readyMarker(pos);
+		
+		var singleton = this;
 		//singleton.pMarker.setTitle(szLabel);
 		singleton.pMarker.setLabel({
 				offset: new AMap.Pixel(20, 20),//修改label相对于maker的位置
