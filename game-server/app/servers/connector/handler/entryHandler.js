@@ -348,8 +348,15 @@ function yuntu_AddNewData(sTableId,szData,funcCallback,pCallOwner){
 
 // end yuntu function .................................................................
 
-function check_HasPoi(szPoiId, funcCallback, pCallOwner) {
-	redis_GetDataByKey(szPoiId,function(sErr,sData){
+
+// warp self cache function ...........................................................
+function mycache_SetPoiData(szPoiId,sData){
+	var pkey = pRedisKeys.key_poiid_data(szPoiId);
+	redis_SetDataByKey(pkey,sData);
+}
+function mycache_GetPoiData(szPoiId, funcCallback, pCallOwner) {
+	var pkey = pRedisKeys.key_poiid_data(szPoiId);
+	redis_GetDataByKey(pkey,function(sErr,sData){
 		if(sErr != null || sData == null){
 			var sFilter = "poiid:"+szPoiId;
 			yuntu_GetDataByFilter(sTable_t_poi,sFilter,function(nResult,sBody){
@@ -361,7 +368,7 @@ function check_HasPoi(szPoiId, funcCallback, pCallOwner) {
 						// only one poi is ok
 						szResult = "success";
 						// cache this poi's value.
-						redis_SetDataByKey(szPoiId,sBody);
+						mycache_SetPoiData(szPoiId,sBody);
 					} else {
 						szResult = "failed";
 					}
@@ -386,8 +393,12 @@ function check_HasPoi(szPoiId, funcCallback, pCallOwner) {
 	});
 }
 
-function check_GetUserPois(nUserId, funcCallback, pCallOwner) {
-	var sKey = "userid:"+"pois:"+toString(nUserId);
+function mycache_SetUserPois(nUserId,sData){
+	var sKey = pRedisKeys.key_userid_pois(nUserId);
+	redis_SetDataByKey(sKey,sData);
+}
+function mycache_GetUserPois(nUserId, funcCallback, pCallOwner) {
+	var sKey = pRedisKeys.key_userid_pois(nUserId);
 	redis_GetDataByKey(sKey,function(sErr,sData){
 		if(sErr != null || sData == null){
 			var sFilter = "ownerid:"+nUserId;
@@ -397,7 +408,8 @@ function check_GetUserPois(nUserId, funcCallback, pCallOwner) {
 				if(nResult == 1){
 					pResult = JSON.parse(sBody);
 					szResult = "success";
-					redis_SetDataByKey(sKey,sBody);
+					
+					mycache_SetUserPois(nUserId,sBody);
 				} else {
 					szResult = "system error";
 				}
@@ -408,7 +420,7 @@ function check_GetUserPois(nUserId, funcCallback, pCallOwner) {
 				}
 			});	
 		} else {
-			// poi data in redis
+			// data in redis
 			var pResult = JSON.parse(sData);
 			if (pCallOwner != null && funcCallback != null) {
 				funcCallback.call(pCallOwner, "success", pResult);
@@ -419,22 +431,26 @@ function check_GetUserPois(nUserId, funcCallback, pCallOwner) {
 	});
 }
 
-function check_HasUser(szUserName, funcCallback, pCallOwner) {
-	redis_GetDataByKey(szUserName,function(sErr,sData){
+function mycache_SetUserData(szUserName,sData){
+	var sKey = pRedisKeys.key_username_data(szUserName);
+	redis_SetDataByKey(sKey,sData);
+}
+function mycache_GetUserData(szUserName, funcCallback, pCallOwner) {
+	var sKey = pRedisKeys.key_username_data(szUserName);
+	redis_GetDataByKey(sKey,function(sErr,sData){
 		if(sErr != null || sData == null){
 			// user not in redis,get it from db
 			var sFilter = "account:"+szUserName;
 			yuntu_GetDataByFilter(sTable_t_account,sFilter,function(nResult,sBody){
 				var szResult = "";
 				var pResult = {};
-				
 				if(nResult == 1){
 					pResult = JSON.parse(sBody);
 					if (pResult.count == 1) {
 						// only one account is ok
 						szResult = "success";
 						// cache this user's value.
-						redis_SetDataByKey(szUserName,sBody);
+						mycache_SetUserData(szUserName,sBody);
 					} else {
 						szResult = "failed";
 					}
@@ -459,9 +475,13 @@ function check_HasUser(szUserName, funcCallback, pCallOwner) {
 	});
 }
 
-
-function check_HasUserById(nId, funcCallback, pCallOwner) {
-	redis_GetDataByKey(nId+"_userid",function(sErr,sData){
+function mycache_SetDataByUserId(nId, sData){
+	var sKey = pRedisKeys.key_userid_data(nId);
+	redis_SetDataByKey(sKey,sData);
+}
+function mycache_GetDataByUserId(nId, funcCallback, pCallOwner) {
+	var sKey = pRedisKeys.key_userid_data(nId);
+	redis_GetDataByKey(sKey,function(sErr,sData){
 		if(sErr != null || sData == null){
 			// user not in redis,get it from db
 			var sFilter = "_id:"+nId;
@@ -474,7 +494,7 @@ function check_HasUserById(nId, funcCallback, pCallOwner) {
 						// only one account is ok
 						szResult = "success";
 						// cache this user's value.
-						redis_SetDataByKey(nId+"_userid",sBody);
+						mycache_SetDataByUserId(nId,sBody);
 					} else {
 						szResult = "failed";
 					}
@@ -499,6 +519,39 @@ function check_HasUserById(nId, funcCallback, pCallOwner) {
 	});
 }
 
+function mycache_SetExtDataByPoiTypeText(typetext, sData){
+	var sKey = pRedisKeys.key_poitypetext_extdata(typetext);
+	redis_SetDataByKey(sKey,sData);
+}
+function mycache_GetExtDataByPoiTypeText(typetext, funcCallback, pCallOwner) {
+	var sKey = pRedisKeys.key_poitypetext_extdata(typetext);
+	redis_GetDataByKey(sKey,function(sErr,sData){
+		var pExtData = {};
+		var szResult = "";
+		if(sErr != null || sData == null){
+			var nBaseIndex = myTable_GetBaseIndexByTypeText(typetext);
+			var nBaseCost = myTable_GetBaseCostByIndex(nBaseIndex);
+			pExtData.basetypeindex = nBaseIndex;
+			pExtData.basecost = nBaseCost;
+			var pMonsterNames = myTable_GetMaybeMonsterNamesByBaseIndex(pExtData.basetypeindex);
+			pExtData.monstername = pMonsterNames;
+
+			// 以类型名和类型ID缓存表数据
+			mycache_SetExtDataByPoiTypeText(typetext,JSON.stringify(pExtData));
+			szResult = "success";
+		}else{
+			pExtData = JSON.parse(sData);
+			szResult = "success";
+		}
+		
+		if (pCallOwner != null && funcCallback != null) {
+			funcCallback.call(pCallOwner, szResult, pExtData);
+		} else if (funcCallback != null) {
+			funcCallback(szResult, pExtData);
+		}
+	});
+}
+// end warp self cache function ...........................................................
 
 
 
@@ -550,7 +603,7 @@ Handler.prototype.check_Register = function(msg,session,next) {
 		return;
 	}
 	// first check has user name...
-	check_HasUser(msg.username,function(szResult,pUserData){
+	mycache_GetUserData(msg.username,function(szResult,pUserData){
 		if (szResult == "success") {
 			// already has this user,can't register
 			next(null, {
@@ -642,7 +695,7 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 	var self = this;
 	
 	// get this user data
-	check_HasUser(msg.username,function(szResult,pUserData){
+	mycache_GetUserData(msg.username,function(szResult,pUserData){
 		if (szResult == "success") {
 			
 			var sStorePwd = myfun_BuildEndPassword(msg.username, msg.password);
@@ -684,7 +737,7 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 							});
 							// update redis data
 							pUserData.datas[0].loginkey = pInsertData.loginkey;
-							redis_SetDataByKey(msg.username,JSON.stringify(pUserData));
+							mycache_SetUserData(msg.username,JSON.stringify(pUserData));
 						}	else {
 							next(null, {
 								code: 205,
@@ -733,7 +786,7 @@ Handler.prototype.get_UserData = function(msg, session, next) {
 		return;
 	}
 	
-	check_HasUser(msg.username,function(szResult,pUserData){
+	mycache_GetUserData(msg.username,function(szResult,pUserData){
 		if (szResult == "success") {
 			if (msg.acckey != pUserData.datas[0].loginkey) {
 				next(null, {
@@ -765,7 +818,7 @@ Handler.prototype.get_UserPoiData = function(msg, session, next) {
 		return;
 	}
 	
-	check_HasUser(msg.username,function(szResult,pUserData){
+	mycache_GetUserData(msg.username,function(szResult,pUserData){
 		if (szResult == "success") {
 			if (msg.acckey != pUserData.datas[0].loginkey) {
 				next(null, {code: 203,	msg: 'AccKey Is Error'});
@@ -773,7 +826,7 @@ Handler.prototype.get_UserPoiData = function(msg, session, next) {
 			}
 			
 			// find all poi by user id
-			check_GetUserPois(pUserData.datas[0]._id,function(szResult,pPoisData){
+			mycache_GetUserPois(pUserData.datas[0]._id,function(szResult,pPoisData){
 				if (szResult == "success") {
 					next(null, {code: 200,	msg: JSON.stringify(pPoisData)});
 				} else {
@@ -802,7 +855,7 @@ Handler.prototype.setBirthPosition = function(msg,session,next) {
 		return;
 	}
 	
-	check_HasUser(msg.username,function(szResult,pUserData){
+	mycache_GetUserData(msg.username,function(szResult,pUserData){
 		if (szResult == "success") {
 			
 			if (msg.acckey != pUserData.datas[0].loginkey) {
@@ -832,7 +885,7 @@ Handler.prototype.setBirthPosition = function(msg,session,next) {
 						// update redis data
 						pUserData.datas[0]._name = pInsertData._name;
 						pUserData.datas[0]._location = pInsertData._location;
-						redis_SetDataByKey(msg.username, JSON.stringify(pUserData));
+						mycache_SetUserData(msg.username, JSON.stringify(pUserData));
 					} else {
 						next(null, {
 							code: 204,
@@ -870,7 +923,7 @@ Handler.prototype.teleportToPosition = function(msg,session,next) {
 	}
 	
 	
-	check_HasUser(msg.username,function(szResult,pUserData){
+	mycache_GetUserData(msg.username,function(szResult,pUserData){
 		if (szResult == "success") {
 //  				console.log("msg->",msg)
 			if (msg.acckey != pUserData.datas[0].loginkey) {
@@ -902,7 +955,7 @@ Handler.prototype.teleportToPosition = function(msg,session,next) {
 						// update user in redis.
 						pUserData.datas[0]._name = pInsertData._name;
 						pUserData.datas[0]._location = pInsertData._location;
-						redis_SetDataByKey(msg.username,JSON.stringify(pUserData));
+						mycache_SetUserData(msg.username,JSON.stringify(pUserData));
 					} else {
 						next(null, {
 							code: 204,
@@ -946,7 +999,7 @@ Handler.prototype.getPoiData = function(msg,session,next) {
 	}
 	
 	
-	check_HasUser(msg.username,function(szResult,pUserData){
+	mycache_GetUserData(msg.username,function(szResult,pUserData){
 		if (szResult == "success") {
 			if (msg.acckey != pUserData.datas[0].loginkey) {
 				next(null, {
@@ -955,7 +1008,7 @@ Handler.prototype.getPoiData = function(msg,session,next) {
 				});
 				return;
 			}
-			check_HasPoi(msg.poiid,function(szResult,pPoiData){
+			mycache_GetPoiData(msg.poiid,function(szResult,pPoiData){
 				var pExtData = {};
 				var sCurPoiTypeText = msg.poitypetext;
 				if(sCurPoiTypeText === ""){// poi 类型是空的时候
@@ -995,7 +1048,7 @@ Handler.prototype.getPoiData = function(msg,session,next) {
 
 							
 
-							check_HasUserById(pPoiData.datas[0].ownerid,function(szResultOwner,pUserDataOwner){
+							mycache_GetDataByUserId(pPoiData.datas[0].ownerid,function(szResultOwner,pUserDataOwner){
 								console.log("Get Owner Data Result:",szResultOwner,pUserDataOwner);
 								if (szResultOwner == "success") {
 									pOwnerData.name = pUserDataOwner.datas[0].account;
@@ -1066,7 +1119,7 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 	}
 	
 	
-	check_HasUser(msg.username,function(szResult,pUserData){
+	mycache_GetUserData(msg.username,function(szResult,pUserData){
 		if (szResult == "success") {
 			if (msg.acckey != pUserData.datas[0].loginkey) {
 				next(null, {
@@ -1076,7 +1129,7 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 				return;
 			}
 			
-			check_HasPoi(msg.poiid,function(szResult,pPoiData){
+			mycache_GetPoiData(msg.poiid,function(szResult,pPoiData){
 				
 				if(szResult == "success"){// 有记录					
 					if(pPoiData.datas[0].ownerid > 0){// 是否有人占领
@@ -1114,7 +1167,7 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 							var pResult = JSON.parse(sData);
 							if(pResult.status == 1)	{
 								pUserData.datas[0].money = pNewMoney;
-								redis_SetDataByKey(msg.username,JSON.stringify(pUserData));
+								mycache_SetUserData(msg.username,JSON.stringify(pUserData));
 
 								// 随机产生一个怪数据
 								var pNewMonsterData = myTable_RandomOneMonsterByBaseIndex(pExtData.basetypeindex);
@@ -1160,7 +1213,8 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 												pPoiData.datas[0].monsterid = pUpdateData.monsterid;
 												pPoiData.datas[0].monsterlevel = pUpdateData.monsterlevel;
 												pPoiData.datas[0].monsterhp = pUpdateData.monsterhp;
-												redis_SetDataByKey(msg.poiid,JSON.stringify(pPoiData));
+												
+												mycache_SetPoiData(msg.poiid,JSON.stringify(pPoiData));
 											} else {
 												next(null, {
 													code: 211,
@@ -1214,8 +1268,8 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 												pPoiData.datas[0].monsterid = pInsertData.monsterid;
 												pPoiData.datas[0].monsterlevel = pInsertData.monsterlevel;
 												pPoiData.datas[0].monsterhp = pInsertData.monsterhp;
-												redis_SetDataByKey(msg.poiid,JSON.stringify(pPoiData));
-
+												
+												mycache_SetPoiData(msg.poiid,JSON.stringify(pPoiData));
 											} else {
 												next(null, {
 													code: 211,
