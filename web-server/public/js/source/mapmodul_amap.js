@@ -160,25 +160,31 @@ define(["amap"], {
 // 			str.push('精度：' + data.accuracy + ' 米');
 // 			str.push('是否经过偏移：' + (data.isConverted ? '是' : '否'));
 // 			console.log("geolocation:" + str);
+			singleton.bOnGeoLocation = false;
+			if(CallbackOwner != null)
+				pCallback.call(CallbackOwner,0,data);
+			else
+				pCallback.call(0,data);
 			
-			// 由位置得到详细信息
-			singleton.pGeoCoder.getAddress(data.position, function(status, result) {
-				if (status === 'complete' && result.info === 'OK') {
-					singleton.bOnGeoLocation = false;
-					if (pCallback != null && CallbackOwner != null) {
-						pCallback.call(CallbackOwner, "complete", data,result);
-					}
-				}
-			});
+
+// 			// 由位置得到详细信息
+// 			singleton.pGeoCoder.getAddress(data.position, function(status, result) {
+// 				if (status === 'complete' && result.info === 'OK') {
+// 					singleton.bOnGeoLocation = false;
+// 					if (pCallback != null && CallbackOwner != null) {
+// 						pCallback.call(CallbackOwner, 0, data,result);
+// 					}
+// 				}
+// 			});
 			
 		}); //返回定位信息
 		
 		AMap.event.addListenerOnce(this.pGeolocation, 'error', function(data) {
 			singleton.bOnGeoLocation = false;
-			if(pCallback != null && CallbackOwner != null)
-			{
-				pCallback.call(CallbackOwner, "error", data);
-			}
+			if(CallbackOwner != null)
+				pCallback.call(CallbackOwner,1,data);
+			else
+				pCallback.call(1,data);
 		}); //返回定位出错信息
 		
 		this.pGeolocation.getCurrentPosition();

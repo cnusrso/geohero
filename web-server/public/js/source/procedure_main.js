@@ -644,12 +644,24 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
         switch (item.id) {
           case 0:
             {
-              _gdata.model_map.panTo(_gdata.model_userdata.userdata.curpos);
-              _gdata.model_map.addMarker(
-                _gdata.model_userdata.userdata.curpos, 
-                _gdata.model_userdata.userdata.account,
-                _gdata.model_userdata.userdata.curpos
-                );
+//               _gdata.model_map.panTo(_gdata.model_userdata.userdata.curpos);
+//               _gdata.model_map.addMarker(
+//                 _gdata.model_userdata.userdata.curpos, 
+//                 _gdata.model_userdata.userdata.account,
+//                 _gdata.model_userdata.userdata.curpos
+//                 );
+							_gdata.model_util.BlockMsgShow("获取位置中...");
+							_gdata.model_map.startGetCurrentPosition(function(nResult,sData){
+								_gdata.model_util.BlockMsgHide();
+								if(nResult === 0){
+									var pAddressData = sData.addressComponent;									
+									_gdata.model_notify.showNotify("信息","当前位置:"+pAddressData.province+pAddressData.city+pAddressData.district+pAddressData.township);
+									_gdata.model_map.panTo(sData.position);
+									_gdata.model_map.zoomTo(15);
+								} else {
+									_gdata.model_notify.showNotify("信息","无法得到位置:"+sData);
+								}
+							},singleton);
             }
             break;
           case 1:
