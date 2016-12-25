@@ -11,6 +11,7 @@ define(["amap"], {
 	pGeolocation: null,
 	pGeoCoder:null,
 	bOnGeoLocation: false,
+	pCitySearch: null,
 	
 	pWalkingService: null,
 	
@@ -46,6 +47,8 @@ define(["amap"], {
             extensions: "base"
         });
 		});
+		
+		
 		//构造步行导航服务类
 		AMap.service(["AMap.Walking"], function() {
 			singleton.pWalkingService = new AMap.Walking({ 
@@ -111,7 +114,10 @@ define(["amap"], {
 			
 		});
 		
-		
+		// 城市查找类
+		this.maper.plugin('AMap.CitySearch',function(){
+			singleton.pCitySearch = new AMap.CitySearch();
+		});
 
 
 	},
@@ -151,6 +157,31 @@ define(["amap"], {
 		})
 	},
 	
+	// 得到当前所处的城市信息。
+	getCurrentCity: function(pCallback,pCallbackOwner){
+		this.pCitySearch.getLocalCity(function(status, result) {
+				if (status === 'complete' && result.info === 'OK') {
+						if (result && result.city && result.bounds) {
+							if(pCallbackOwner != null)
+								pCallback.call(pCallbackOwner,0,result);
+							else
+								pCallback.call(0,result);
+							
+// 								var cityinfo = result.city;
+// 								var citybounds = result.bounds;
+// 								document.getElementById('tip').innerHTML = '您当前所在城市：'+cityinfo;
+// 								//地图显示当前城市
+// 								map.setBounds(citybounds);
+						}
+				} else {
+					if(pCallbackOwner != null)
+						pCallback.call(pCallbackOwner,1,result);
+					else
+						pCallback.call(1,result);
+				}
+		});
+	},
+	
 	startGetCurrentPosition: function(pCallback, CallbackOwner) {
 		var singleton = this;
 		AMap.event.addListenerOnce(this.pGeolocation, 'complete', function(data) {
@@ -161,6 +192,8 @@ define(["amap"], {
 // 			str.push('是否经过偏移：' + (data.isConverted ? '是' : '否'));
 // 			console.log("geolocation:" + str);
 			singleton.bOnGeoLocation = false;
+			singleton.maper.removeControl(singleton.pGeolocation);
+			
 			if(CallbackOwner != null)
 				pCallback.call(CallbackOwner,0,data);
 			else
@@ -181,12 +214,15 @@ define(["amap"], {
 		
 		AMap.event.addListenerOnce(this.pGeolocation, 'error', function(data) {
 			singleton.bOnGeoLocation = false;
+			singleton.maper.removeControl(singleton.pGeolocation);
 			if(CallbackOwner != null)
 				pCallback.call(CallbackOwner,1,data);
 			else
 				pCallback.call(1,data);
 		}); //返回定位出错信息
 		
+		// 为了可以自动定位到当前位置临时显示地图的定位按钮
+		singleton.maper.addControl(singleton.pGeolocation);
 		this.pGeolocation.getCurrentPosition();
 		this.bOnGeoLocation = true;
 	},
@@ -201,6 +237,10 @@ define(["amap"], {
 		this.maper.setZoom(nZoom);
 	},
 	
+	setBounds:function(pBounds)
+	{
+		this.maper.setBounds(pBounds);
+	},
 	panTo:function(pos)
 	{
 		this.maper.panTo(pos);

@@ -651,15 +651,23 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 //                 _gdata.model_userdata.userdata.curpos
 //                 );
 							_gdata.model_util.BlockMsgShow("获取位置中...");
-							_gdata.model_map.startGetCurrentPosition(function(nResult,sData){
+// 							_gdata.model_map.startGetCurrentPosition(function(nResult,sData){
+// 								_gdata.model_util.BlockMsgHide();
+// 								if(nResult === 0){
+// 									var pAddressData = sData.addressComponent;									
+// 									_gdata.model_notify.showNotify("信息","当前位置:"+pAddressData.province+pAddressData.city+pAddressData.district+pAddressData.township);
+// 								} else {
+// 									_gdata.model_notify.showNotify("信息","无法得到位置:"+sData);
+// 								}
+// 							},singleton);
+							
+							_gdata.model_map.getCurrentCity(function(nResult,pData){
 								_gdata.model_util.BlockMsgHide();
 								if(nResult === 0){
-									var pAddressData = sData.addressComponent;									
-									_gdata.model_notify.showNotify("信息","当前位置:"+pAddressData.province+pAddressData.city+pAddressData.district+pAddressData.township);
-									_gdata.model_map.panTo(sData.position);
-									_gdata.model_map.zoomTo(15);
-								} else {
-									_gdata.model_notify.showNotify("信息","无法得到位置:"+sData);
+									_gdata.model_notify.showNotify("信息","当前位置:"+pData.city);
+									_gdata.model_map.setBounds(pData.bounds);
+								}else{
+									_gdata.model_notify.showNotify("信息","无法得到位置:"+pData.info);
 								}
 							},singleton);
             }
@@ -709,6 +717,12 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
       }]
     });
     
+		var pCurUl = _gdata.model_jq("#maincirclemenu");
+		pCurUl.empty();
+		pCurUl.append('<li><a href=\"#\"><\/a><\/li>');
+		pCurUl.append('<li id=\"teleport\" ><a href=\"#\" alt=\"Item 1\" title=\"teleport\"  style=\'color:#ff1010\'>传送<\/a><\/li>');
+		pCurUl.append('<li id=\"move\" ><a href=\"#\" alt=\"Item 2\" title=\"move to\"  style=\'color:#ff1010\'>移动<\/a><\/li>');
+		pCurUl.append('<li id=\"query\" ><a href=\"#\" alt=\"Item 3\" title=\"query info\"  style=\'color:#ff1010\'>详细<\/a><\/li>');
     _gdata.model_jq('#maincirclemenu').circleMenu({
       direction: 'full',
       trigger: 'click',
@@ -729,6 +743,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
       },
       init: function() {
         console.log('maincirclemenu initialized');
+				
       },
 
       select: function(evt, index) {
