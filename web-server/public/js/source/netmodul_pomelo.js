@@ -301,22 +301,22 @@ define(['md5'], {
 	},
 	
 	// 由POI ID 发出要攻打一个有主基地
-	req_AttackBase: function(acckey, username, poiid_source, poiid_target, funcCallback, pCallOwner) {
+	req_readyAttackBase: function(acckey, username, poiid_target, poiids_source, funcCallback, pCallOwner) {
 		this.checkConnect(function(szState){
 			if(szState == "reconnect")
 				{
-					this.req_AttackBase(acckey, username,poiid_source, poiid_target, funcCallback,pCallOwner);
+					this.req_ReadyAttackOtherPoi(acckey, username,poiids_source, poiid_target, funcCallback,pCallOwner);
 				}
 			else if(szState == "connect")
 				{
 					var pMsg = {};
 					pMsg.acckey = acckey;
 					pMsg.username = username;
-					pMsg.poiid_source = poiid_source;
-					pMsg.poiid_target = poiid_target;
+					pMsg.sourcepoiids = poiids_source;
+					pMsg.destpoiid = poiid_target;
 
 
-					window.pomelo.request("connector.entryHandler.attackBase", pMsg, function(data) {
+					window.pomelo.request("connector.entryHandler.req_readyAttackBase", pMsg, function(data) {
 
 						funcCallback.call(pCallOwner, data);
 

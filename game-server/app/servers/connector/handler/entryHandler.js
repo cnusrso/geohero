@@ -15,6 +15,27 @@ myrediscl.on("error", function (err) {
 //     console.log("aaaaaaaaaaaa",err,typeof(reply),reply);
 // });
 
+var myasync = require("async");
+// myasync.waterfall(
+// 	[
+// 		function(callback) {
+// 			console.log("step one!!!");
+// 			callback(null, 'one', 'two');
+// 		},
+// 		function(arg1, arg2, callback) {
+// 			console.log("step two!!!");
+// 			callback(null, 'three');
+// 		},
+// 		function(arg1, callback) {
+// 			console.log("step three!!!");
+// 			callback(null, 'done');
+// 		}
+// 	],
+// 	function(err, result) {
+// 		console.log("waterfall over:->",result);
+// 	}
+// );
+
 // begin tables ->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 // define tables struct...
@@ -42,9 +63,9 @@ t_monster.set("icon",4);
 if(1)
 	{
 		pTable_baseinfo = myBabyParse.parseFiles(process.cwd()+"/../shared/tables/baseinfo.txt",{comments:true});
-		console.log("pTable_baseinfo",pTable_baseinfo);
+		//console.log("pTable_baseinfo",pTable_baseinfo);
 		pTable_monster = myBabyParse.parseFiles(process.cwd()+"/../shared/tables/monster.txt",{comments:true});
-		console.log("pTable_monster",pTable_monster);
+		//console.log("pTable_monster",pTable_monster);
 	}
 
 // some func for tables;
@@ -236,6 +257,9 @@ var pRedisKeys = {
 	key_userid_pois_dirty:function(userid){return "userid:"+userid.toString()+":pois:dirty";},
 	key_userid_data:function(userid){return "userid:"+userid.toString()+":data"},
 	key_username_data:function(name){return "username:"+name+":data"},	
+	
+	key_userid_poiid_battle:function(userid,destpoiid){return "userid:"+userid.toString()+":poiid:"+destpoiid.toString()+":battle"},
+	key_userid_battlekey:function(userid){return "userid:"+userid.toString()+":battlekey"},
 };
 
 function redis_SetDataByKey(szKey,sData) {
@@ -578,14 +602,15 @@ function mycache_GetExtDataByPoiTypeText(typetext, funcCallback, pCallOwner) {
 
 
 
-module.exports = function(app) { 
-  return new Handler(app);
-};
+
 
 var Handler = function(app) {
   this.app = app;
 };
 
+module.exports = function(app) { 
+  return new Handler(app);
+};
 
 var onUserLeave = function (username, session) {
   if (session && session.uid) {
@@ -595,8 +620,8 @@ var onUserLeave = function (username, session) {
 };
 
 Handler.prototype.OnExit = function(){
-// 	console.log("app exit");
-	myrediscl.set('exit time',myfun_getDateTimeStr());
+	console.log("entryhandler receive exit!!!");
+	myrediscl.set('exit_time',myfun_getDateTimeStr());
 };
 
 /*
@@ -851,7 +876,16 @@ Handler.prototype.get_UserPoiData = function(msg, session, next) {
 			// find all poi by user id
 			mycache_GetUserPois(pUserData.datas[0]._id,function(szResult,pPoisData){
 				if (szResult == "success") {
-					next(null, {code: 200,	msg: JSON.stringify(pPoisData)});
+					var pSendObj = {};
+					pSendObj.count = pPoisData.count;
+					pSendObj.datas = [];
+					for(var i = 0; i < pSendObj.count; ++ i){
+						pSendObj.datas[i] = {};
+						pSendObj.datas[i]._name = pPoisData.datas[i]._name;
+						pSendObj.datas[i]._location = pPoisData.datas[i]._location;
+						pSendObj.datas[i].poiid = pPoisData.datas[i].poiid;
+					}
+					next(null, {code: 200,	msg: JSON.stringify(pSendObj)});
 				} else {
 					next(null, {code: 204,	msg: szResult});
 				}	
@@ -1072,7 +1106,7 @@ Handler.prototype.getPoiData = function(msg,session,next) {
 							
 
 							mycache_GetDataByUserId(pPoiData.datas[0].ownerid,function(szResultOwner,pUserDataOwner){
-								console.log("Get Owner Data Result:",szResultOwner,pUserDataOwner);
+// 								console.log("Get Owner Data Result:",szResultOwner,pUserDataOwner);
 								if (szResultOwner == "success") {
 									pOwnerData.name = pUserDataOwner.datas[0].account;
 									
@@ -1333,4 +1367,175 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 		}
 	});	
 	
+};
+
+// 开始一场战斗。
+Handler.prototype.req_readyAttackBase = function(msg,session,next) {
+	if(msg.acckey === undefined)
+	{
+		console.log('Not Find "AccKey"');
+		next(null, {code: 202, msg: 'Not Defined AccKey'});
+		return;
+	}
+	if(msg.username === undefined)
+	{
+		console.log('Not Find "username"');
+		next(null, {code: 202, msg: 'Not Defined username'});
+		return;
+	}
+	if(msg.destpoiid === undefined)//要打的目标点
+	{
+		console.log('Not Find "destpoiid"');
+		next(null, {code: 202, msg: 'Not Defined destpoiid'});
+		return;
+	}
+	if(msg.sourcepoiids === undefined)//用到的攻方的点数组
+	{
+		console.log('Not Find "sourcepoiids"');
+		next(null, {code: 202, msg: 'Not Defined sourcepoiids'});
+		return;
+	}
+	
+	myasync.waterfall(
+		[
+			function(callback) {
+				console.log("1 check user right!!!");
+				mycache_GetUserData(msg.username,function(szResult,pUserData){
+					if (szResult != "success") {
+						console.log('Not Find User:->',msg.username);
+						return callback(203,'Not Find User');
+					}
+					if (szResult == "success") {
+						if (msg.acckey != pUserData.datas[0].loginkey) {
+							return callback(204,'Acckey Is Error');
+						}
+					}
+					return callback(null, pUserData);	
+				});
+			},
+			function(pUserData, callback) {
+				console.log("2 get users battle data");
+				var pUserBattleArray = [];
+				var pKey_userid2battlekey = pRedisKeys.key_userid_battlekey(pUserData.datas[0]._id);
+				redis_GetDataByKey(pKey_userid2battlekey,function(sErr,sData){
+					if(sErr != null || sData == null){
+						// 无数据
+						pUserBattleArray = [];
+					}else{
+						// 还有旧数据
+						pUserBattleArray = JSON.parse(sData);
+						// todo 需要检测下对应的战斗是否已结束
+						
+					}
+					return callback(null,pUserData,pUserBattleArray);
+				});
+			},
+			function(pUserData, pUserBattleArray, callback) {
+				console.log("3 check dest poi data");
+				mycache_GetPoiData(msg.destpoiid,function(szResult,pDestPoiData){
+					if(szResult == "success"){// 有记录					
+						if(pDestPoiData.datas[0].ownerid > 0){// 有人占领
+							//检测是否自己的。
+							if(pDestPoiData.datas[0].ownerid == pUserData.datas[0]._id){
+								return callback(205,'This Poi In Myself');
+							}
+							// 检测是否空闲状态
+							if(pDestPoiData.datas[0].battlestatus != 0){
+								// todo 需要更新此点的状态，看是否战斗结束。
+								
+								
+								return callback(206,'This Poi In Battle');
+							}
+						}else{
+							// 现在没人占。
+							return callback(207,'This Poi Is Empty');
+						}
+					} else {// 未记录的点
+						return callback(208,'This Poi Is Empty,Not Cached');
+					}
+					
+					callback(null, pUserData, pUserBattleArray, pDestPoiData);	
+				});
+			},
+			function(pUserData, pUserBattleArray, pDestPoiData, callback) {
+				console.log("4 check source poi data!!!");
+				var pSourcePoiDatas = new Map();
+				for(var i = 0; i < msg.sourcepoiids.length; ++ i){
+					mycache_GetPoiData(msg.sourcepoiids[i],function(szResult,pSourcePoiData){
+						if(szResult == "success"){// 有记录					
+							if(pSourcePoiData.datas[0].ownerid > 0){// 有人占领
+								//检测是否自己的。
+								if(pSourcePoiData.datas[0].ownerid != pUserData.datas[0]._id){
+									return callback(209,'This Source Poi In Not Myself:'+pSourcePoiData.datas[0].poiid);
+								}
+								// 检测是否空闲状态
+								if(pSourcePoiData.datas[0].battlestatus !== 0){
+									// todo 需要更新此点的状态，看是否战斗结束。
+									
+									return callback(210,'This Poi In Battle:'+pSourcePoiData.datas[0].poiid);
+								}
+							}else{
+								// 现在没人占。
+								return callback(210,'This Poi Is Empty:'+pSourcePoiData.datas[0].poiid);
+							}
+						} else {// 未记录的点
+							return callback(212,'This Poi Is Empty,Not Cached:'+pSourcePoiData.datas[0].poiid);
+						}
+						pSourcePoiDatas.set(pSourcePoiData.datas[0].poiid,pSourcePoiData);
+						if(pSourcePoiDatas.size >= msg.sourcepoiids.length){
+							return callback(null, pUserData, pUserBattleArray, pDestPoiData,pSourcePoiDatas);
+						}
+					});
+				}
+			},
+			function(pUserData, pUserBattleArray, pDestPoiData, pSourcePoiDatas, callback){
+				console.log("5 calcate attack!!!");
+
+				// 1 目标点设置处于战斗状态。
+				pDestPoiData.datas[0].battlestatus = 1;// 目标点
+				mycache_SetPoiData(msg.destpoiid,JSON.stringify(pDestPoiData));
+				// 2 源点设置处于战斗状态。
+				pSourcePoiDatas.forEach(function(value, key, map){
+					value.datas[0].battlestatus = 2;// 源点
+					mycache_SetPoiData(key,JSON.stringify(value));
+				});
+				// 3 缓存下这个战斗信息
+				var pBattleData = {};
+				pBattleData.targetid = pDestPoiData.datas[0].poiid;
+				pBattleData.targetpos = pDestPoiData.datas[0]._location;
+				pBattleData.sourceids = new Array(pSourcePoiDatas.size);
+				pBattleData.sourceposs = new Array(pSourcePoiDatas.size);
+				pBattleData.sourcenames = new Array(pSourcePoiDatas.size);
+				var i = 0;
+				pSourcePoiDatas.forEach(function(value, key, map){
+					pBattleData.sourceids[i] = key;
+					pBattleData.sourceposs[i] = value.datas[0]._location;
+					pBattleData.sourcenames[i] = value.datas[0]._name;
+					i++;
+				});
+				pBattleData.begintime = myfun_getDateTimeNumber();
+// 				console.log("pUserData->",pUserData);
+// 				console.log("pDestPoiData->",pDestPoiData);
+				var pKey_OneBattle = pRedisKeys.key_userid_poiid_battle(pUserData.datas[0]._id,pDestPoiData.datas[0]._id);
+				redis_SetDataByKey(pKey_OneBattle,JSON.stringify(pBattleData));
+				
+				// 4 缓存userid对应战斗id
+				var pKey_userid2battlekey = pRedisKeys.key_userid_battlekey(pUserData.datas[0]._id);
+				pUserBattleArray.push(pKey_OneBattle);
+				redis_SetDataByKey(pKey_userid2battlekey,JSON.stringify(pUserBattleArray));
+				
+				
+				
+				// 回应客户端。。。
+				return callback(null, JSON.stringify(pBattleData));
+			},
+		],
+		function(err, result) {
+			if(err !== null){
+				return next(null,{code:err,msg:result});
+			} else {
+				return next(null,{code:200,msg:result});
+			}
+		}
+	);
 };

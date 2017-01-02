@@ -20,28 +20,44 @@ function startmain(){
         useDict : true,
         useProtobuf : true
       });
-
-
-    app.beforeStopHook(function(app,cb){
-  //     var logger = require('pomelo-logger').getLogger('log', __filename, process.pid);
-  //     process.env.LOGGER_LINE = true;
-  //     logger.info('app will stop!!!!!!!!!!');
-      app.rpc.connector.entryHandler.OnExit();
-
-
-      cb();
-    });
   });
 
-  // start app
-  app.start();
+  //处理退出的事件。。。
+  //   var func_beforeexit = function(){
+  //     var nDelaySecond = 5;
+  //     console.log("\nServer Will Exit After ",nDelaySecond," s");
+  //     setInterval(function(){
+  //       console.log("\nServer Will Exit After ",--nDelayTime," s");
+  //     },1000);
+  //     setTimeout(function(){
+  //         process.exit(1);
+  //      }, 5000);
 
-  process.on('uncaughtException', function (err) {
+  //     // do somethin when server exit...
+  //     app.rpc.connector.entryHandler.OnExit();
+  //   };
+  //   process.on('SIGINT',func_beforeexit);
+  //   process.on('SIGTERM',func_beforeexit);
+  app.beforeStopHook(function() {
+    console.log("\nServer Will Exit!!!");
+    // do somethin when server exit...
+    var myredis = require("redis"),
+    myrediscli = myredis.createClient();
+    myrediscli.set('exit_time',(new Date()).toString());
+    myrediscli.quit();
+  });
+  
+  // 显示异常。。。
+  process.on('uncaughtException', function(err) {
     console.error(' Caught exception: ' + err.stack);
   });
+  
+  // start app
+  console.log("server is run !!!");
+  app.start();
 }
 
-function myentry(){
+function myentry(){  
   // clear old redis data....
   var myredis = require("redis"),
   myrediscli = myredis.createClient();
@@ -61,7 +77,7 @@ function myentry(){
 
 
 //->>>>>>>>>>>
-console.log("i am run !!!");
+
 myentry();
 
 

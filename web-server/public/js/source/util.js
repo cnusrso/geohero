@@ -30,4 +30,15 @@ define({
     _gdata.model_jq('body').unblock();
   },
   
+  GetViewportSize: function(){
+    var winWidth=document.body.clientWidth||document.documentElement.clientWidth;
+		var winHeight=document.body.clientHeight||document.documentElement.clientHeight;
+    return [winWidth,winHeight];
+  },
+  
+  IsWideScreen: function(){
+    var pSize = this.GetViewportSize();
+    return pSize[0] > pSize[1];
+  },
+  
 });

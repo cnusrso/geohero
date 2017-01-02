@@ -174,16 +174,14 @@ define(['jquery','jqueryui','pnotify','md5','blockui'],{
   closeLoginDlg: function() {
     _gdata.model_jq("#dialog-SignIn").dialog("close");
   },
-  showLoginDlg: function() {    
+  showLoginDlg: function() {
 
-    _gdata.model_jq("#dialog-SignIn").dialog("option", "position", {
-        my: "center",
-        at: "center",
-        of: window
-      });
-      _gdata.model_jq("#dialog-SignIn").dialog("open");
-    
-    
+  	_gdata.model_jq("#dialog-SignIn").dialog("option", "position", {
+  		my: "center",
+  		at: "center",
+  		of: window
+  	});
+  	_gdata.model_jq("#dialog-SignIn").dialog("open");
   },
   closeRegistDlg: function(){
     _gdata.model_jq("#dialog-SignUp").dialog("close");
@@ -216,7 +214,7 @@ define(['jquery','jqueryui','pnotify','md5','blockui'],{
 
       singleton.showLoginDlg();
     });
-
+    
   },
   
   toNextProcedure: function() {

@@ -14,6 +14,7 @@ define(["amap"], {
 	pCitySearch: null,
 	
 	pWalkingService: null,
+	pDrivingService: null,
 	
 	
 	pFuncEventCallback: null,
@@ -52,10 +53,18 @@ define(["amap"], {
 		//构造步行导航服务类
 		AMap.service(["AMap.Walking"], function() {
 			singleton.pWalkingService = new AMap.Walking({ 
-				map: singleton.maper,
+// 				map: singleton.maper,
 				hideMarkers: false
 			});
 		});
+		//构造路线导航类
+		AMap.service(["AMap.Driving"], function() {
+			singleton.pDrivingService = new AMap.Driving({ 
+// 				map: singleton.maper,
+				hideMarkers: false
+			});
+		});
+		
 		
 
 		this.maper.on('click', function(e) {
@@ -146,12 +155,27 @@ define(["amap"], {
 		var singleton = this;
 		this.pWalkingService.search(from,to,function(status,result){
 			
-			if(singleton.pCallback != null)
+			if(pCallback != null)
 				{
-					if(singleton.pCallbackOwner != null)
-						singleton.pCallback.call(singleton.pCallbackOwner,status,result);
+					if(pCallbackOwner != null)
+						pCallback.call(pCallbackOwner,status,result);
 					else
-						singleton.pCallback.call(status,result);	
+						pCallback.call(status,result);	
+				}
+			
+		})
+	},
+	
+	startGetDrivingData: function(from,to,pCallback,pCallbackOwner){
+		var singleton = this;
+		this.pDrivingService.search(from,to,function(status,result){
+			
+			if(pCallback != null)
+				{
+					if(pCallbackOwner != null)
+						pCallback.call(pCallbackOwner,status,result);
+					else
+						pCallback.call(status,result);	
 				}
 			
 		})

@@ -272,7 +272,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 												if(bIsMyBase === true){
 													return;
 												}
-												_gdata.model_notify.showNotify("Info", "开始攻占了！！！");
+												singleton.onReadyAttackOtherPoi(pPoiData.id,poiname);
 											}
 										}
 									]
@@ -335,6 +335,193 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
     
   },
   
+	// 准备攻击一个他人据点
+	onReadyAttackOtherPoi: function(targetpoiid,targetpoiname){
+// 		_gdata.model_notify.showNotify("Info", "选择用哪些点攻击！！！");
+		
+		_gdata.model_util.BlockMsgShow("获取自己的据点...");
+		var singleton = this;
+    _gdata.model_netmgr.req_getUserPoisData(
+      _gdata.model_userdata.userdata.acckey,
+      _gdata.model_userdata.userdata.account,
+      function(data) {
+        _gdata.model_util.BlockMsgHide();
+				if(data.code !== 200){
+					_gdata.model_notify.showNotify("信息", "获取自己的据点出错:",data.code);
+					return;
+				}
+				var pAllSourceData = JSON.parse(data.msg);
+				if(pAllSourceData.count <= 0){
+					_gdata.model_notify.showNotify("信息", "你一个据点都没有!");
+					return;
+				}
+				// show dialog....
+				var pDlg_ = _gdata.model_jq("#dialog-CommonList");
+				var pDlg_ul = _gdata.model_jq("#dialog-CommonList ul");
+// 				var winWidth=document.body.clientWidth||document.documentElement.clientWidth
+				pDlg_.dialog( "option", "width", 320 );
+				var nOldWidth = pDlg_.dialog("option","width");
+				console.log("oldwidth",nOldWidth);
+				pDlg_.dialog( "option", "title", "点选据点进行攻击！已选(0)个" );
+				pDlg_ul.empty();
+				
+				var pSelectedPoi = new Map();
+				var nSelectedPoiNum = 0;
+				var index = 1;
+				for (var j=0;j<pAllSourceData.count;j++){
+					var pName = decodeURI(pAllSourceData.datas[j]._name);
+					pSelectedPoi.set(j,0);
+					pDlg_ul.append('<li id=\''+(index++)+'\' index=\''+j+'\'>'+pName+' <\/li>');
+// 					+'\n路程:300米 用时:5分钟'
+				}
+				
+				_gdata.model_jq("#dialog-CommonList-List li").click(function() {
+					var nIndex = parseInt(this.getAttribute('index'));					
+					console.log("you select ",nIndex);
+					
+					var pTextSel = " (已选)";
+					if(pSelectedPoi.get(nIndex) === 0){
+						pSelectedPoi.set(nIndex,1);// 选中了这个点
+						this.innerHTML += pTextSel;
+						nSelectedPoiNum ++;
+					} else {
+						pSelectedPoi.set(nIndex,0);// 不选这个点
+						this.innerHTML = this.innerHTML.substr(0,this.innerHTML.length-pTextSel.length);
+						nSelectedPoiNum--;
+					}
+					pDlg_.dialog( "option", "title", "点选据点进行攻击！"+"已选("+nSelectedPoiNum+")个" );
+				});
+				pDlg_.dialog("option", "buttons", 
+					[
+						{
+							text: "进攻",
+							icons: {
+								primary: "ui-icon-arrowthick-1-e"
+							},
+							click: function() {
+								if(nSelectedPoiNum <= 0){
+									_gdata.model_notify.showNotify("信息", "没有选择任何据点!");
+									return;
+								}
+								
+								// 准备攻方的ID列
+								var pSourcePoiIds = [];
+								for (var j=0;j<pAllSourceData.count;j++){
+									if(pSelectedPoi.get(j) === 0){
+										continue;
+									}
+									pSourcePoiIds.push(pAllSourceData.datas[j].poiid);
+								}
+								// 发出
+								_gdata.model_netmgr.req_readyAttackBase(
+									_gdata.model_userdata.userdata.acckey,
+									_gdata.model_userdata.userdata.account,
+									targetpoiid,
+									pSourcePoiIds,
+									singleton.onGetReadyAttackOtherPoiResult,
+									singleton
+								);
+								
+								pDlg_.dialog("close");
+								_gdata.model_util.BlockMsgShow("准备攻击->>"+targetpoiname);
+							}
+						}
+					]
+				);
+				pDlg_.dialog("open");
+					
+      },
+      singleton
+    );
+		
+		
+	},
+	
+	onGetReadyAttackOtherPoiResult: function(data){
+		var singleton = this;
+		
+		_gdata.model_util.BlockMsgHide();
+		
+		if(data.code !== 200){
+			_gdata.model_notify.showNotify("信息", "发起攻击失败:("+data.code+") ("+data.msg+")");
+			return;
+		}
+		
+		var pBattleData = JSON.parse(data.msg);
+		console.log("attack result:->",pBattleData);
+		_gdata.model_notify.showNotify("信息", "发起攻击成功!");
+		
+		
+		var posarray_target = pBattleData.targetpos.split(',');
+		var pos_target = new AMap.LngLat(parseFloat(posarray_target[0]), parseFloat(posarray_target[1]));
+
+		var nCurTime = (new Date()).getTime();
+		var nHasCostTime = nCurTime-pBattleData.begintime;
+		var nHasCostTime_int = Math.floor(nHasCostTime/1000);
+		
+		var pDlg_ = _gdata.model_jq("#dialog-CommonList");
+		var pDlg_ul = _gdata.model_jq("#dialog-CommonList ul");
+		var viewsize = _gdata.model_util.GetViewportSize();
+		pDlg_.dialog( "option", "width", viewsize[0]/4 );
+		pDlg_.dialog( "option", "title", "战斗中" );
+		pDlg_ul.empty();
+		var index = 1;
+		
+		var pProcessData = new Map();
+		for(var i = 0; i < pBattleData.sourceposs.length; ++ i){
+			var posarray1 = pBattleData.sourceposs[i].split(',');
+			var pos1 = new AMap.LngLat(parseFloat(posarray1[0]), parseFloat(posarray1[1]));			
+			_gdata.model_map.startGetDrivingData(pos1,pos_target,function(status,result){
+				if(status != "complete"){
+					_gdata.model_notify.showNotify("信息", "计算路线错误:"+status);
+					return;
+				}
+				var pRouteData = result.routes[0];
+				var nCostTime = pRouteData.time;
+								
+				var poiname = "null";
+				for(var j = 0; j < pBattleData.sourceposs.length; ++j){
+					var lng = result.origin.getLng();
+					var lat = result.origin.getLat();
+					var posArray = pBattleData.sourceposs[j].split(',');
+					if(parseFloat(posArray[0]) == lng && parseFloat(posArray[1]) == lat){
+						poiname = decodeURI(pBattleData.sourcenames[j]);
+						break;
+					}
+				}
+				console.log(poiname+":>---"+nHasCostTime_int+"/"+nCostTime+"--->");
+				pProcessData.set(poiname,nCostTime);
+
+				if(pProcessData.size >= pBattleData.sourceposs.length){
+					for (var [key, value] of pProcessData.entries()) {
+						console.log(key + " = " + value);
+						pDlg_ul.append('<li id=\''+(index++)+'\'>'+key+":>---"+nHasCostTime_int+"/"+value+'---> <\/li>');
+					}
+					
+					pDlg_.dialog(
+						"option", 
+						"buttons", 
+						[
+							{
+								text: "知道了",
+								icons: {
+									primary: "ui-icon-arrowthick-1-e"
+								},
+								click: function() {
+									pDlg_.dialog("close");
+								}
+							}
+						]
+					);
+					pDlg_.dialog("open");
+				}
+			},singleton);
+		}
+		
+		
+		
+	},
+	
 	onOccupyEmptyPoi: function(npoiid,npoitypeid,spoiname,spoipostext){
 		_gdata.model_util.BlockMsgShow("霸占中...");
 		
@@ -651,25 +838,26 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 //                 _gdata.model_userdata.userdata.curpos
 //                 );
 							_gdata.model_util.BlockMsgShow("获取位置中...");
-// 							_gdata.model_map.startGetCurrentPosition(function(nResult,sData){
-// 								_gdata.model_util.BlockMsgHide();
-// 								if(nResult === 0){
-// 									var pAddressData = sData.addressComponent;									
-// 									_gdata.model_notify.showNotify("信息","当前位置:"+pAddressData.province+pAddressData.city+pAddressData.district+pAddressData.township);
-// 								} else {
-// 									_gdata.model_notify.showNotify("信息","无法得到位置:"+sData);
-// 								}
-// 							},singleton);
-							
-							_gdata.model_map.getCurrentCity(function(nResult,pData){
-								_gdata.model_util.BlockMsgHide();
+							_gdata.model_map.startGetCurrentPosition(function(nResult,sData){								
 								if(nResult === 0){
-									_gdata.model_notify.showNotify("信息","当前位置:"+pData.city);
-									_gdata.model_map.setBounds(pData.bounds);
-								}else{
-									_gdata.model_notify.showNotify("信息","无法得到位置:"+pData.info);
+									_gdata.model_util.BlockMsgHide();
+									var pAddressData = sData.addressComponent;									
+									_gdata.model_notify.showNotify("信息","当前位置:"+pAddressData.province+pAddressData.city+pAddressData.district+pAddressData.township);
+								} else {
+									// agagin get city info..
+									_gdata.model_map.getCurrentCity(function(nResult,pData){
+										_gdata.model_util.BlockMsgHide();
+										if(nResult === 0){
+											_gdata.model_notify.showNotify("信息","当前位置:"+pData.city);
+											_gdata.model_map.setBounds(pData.bounds);
+										}else{
+											_gdata.model_notify.showNotify("信息","无法得到位置:"+pData.info);
+										}
+									},singleton);
 								}
 							},singleton);
+							
+							
             }
             break;
           case 1:
@@ -755,7 +943,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
           {
             case "teleport":
               {
-                singleton.onTeleportToPoi(_gdata.model_userdata.getCurSelectPoi());
+//                 singleton.onTeleportToPoi(_gdata.model_userdata.getCurSelectPoi());
 
               }break;
               
@@ -784,6 +972,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
     _gdata.model_jq('#maincirclemenu').offset({ top: -1000, left: -1000});
     
     
+		
     
   },// function end
 
