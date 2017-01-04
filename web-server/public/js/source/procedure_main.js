@@ -467,56 +467,25 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 		pDlg_ul.empty();
 		var index = 1;
 		
-		var pProcessData = new Map();
-		for(var i = 0; i < pBattleData.sourceposs.length; ++ i){
-			var posarray1 = pBattleData.sourceposs[i].split(',');
-			var pos1 = new AMap.LngLat(parseFloat(posarray1[0]), parseFloat(posarray1[1]));			
-			_gdata.model_map.startGetDrivingData(pos1,pos_target,function(status,result){
-				if(status != "complete"){
-					_gdata.model_notify.showNotify("信息", "计算路线错误:"+status);
-					return;
+		pBattleData.distance.results.forEach(function(ele){
+			var nCostTime = parseInt(ele.duration);
+			var originId = parseInt(ele.origin_id);
+			var poiname = decodeURI(pBattleData.sourcenames[originId-1]);
+			pDlg_ul.append('<li id=\''+(index++)+'\'>'+poiname+":>---"+nHasCostTime_int+"/"+nCostTime+'---> <\/li>');
+		});
+		pDlg_.dialog(
+			"option",
+			"buttons", [{
+				text: "好",
+				icons: {
+					primary: "ui-icon-arrowthick-1-e"
+				},
+				click: function() {
+					pDlg_.dialog("close");
 				}
-				var pRouteData = result.routes[0];
-				var nCostTime = pRouteData.time;
-								
-				var poiname = "null";
-				for(var j = 0; j < pBattleData.sourceposs.length; ++j){
-					var lng = result.origin.getLng();
-					var lat = result.origin.getLat();
-					var posArray = pBattleData.sourceposs[j].split(',');
-					if(parseFloat(posArray[0]) == lng && parseFloat(posArray[1]) == lat){
-						poiname = decodeURI(pBattleData.sourcenames[j]);
-						break;
-					}
-				}
-				console.log(poiname+":>---"+nHasCostTime_int+"/"+nCostTime+"--->");
-				pProcessData.set(poiname,nCostTime);
-
-				if(pProcessData.size >= pBattleData.sourceposs.length){
-					for (var [key, value] of pProcessData.entries()) {
-						console.log(key + " = " + value);
-						pDlg_ul.append('<li id=\''+(index++)+'\'>'+key+":>---"+nHasCostTime_int+"/"+value+'---> <\/li>');
-					}
-					
-					pDlg_.dialog(
-						"option", 
-						"buttons", 
-						[
-							{
-								text: "知道了",
-								icons: {
-									primary: "ui-icon-arrowthick-1-e"
-								},
-								click: function() {
-									pDlg_.dialog("close");
-								}
-							}
-						]
-					);
-					pDlg_.dialog("open");
-				}
-			},singleton);
-		}
+			}]
+		);
+		pDlg_.dialog("open");
 		
 		
 		
@@ -664,19 +633,16 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 						
 					}
 					pDlg_.dialog(
-						"option", 
-						"buttons", 
-						[
-							{
-								text: "知道了",
-								icons: {
-									primary: "ui-icon-arrowthick-1-e"
-								},
-								click: function() {
-									pDlg_.dialog("close");
-								}
+						"option",
+						"buttons", [{
+							text: "知道了",
+							icons: {
+								primary: "ui-icon-arrowthick-1-e"
+							},
+							click: function() {
+								pDlg_.dialog("close");
 							}
-						]
+						}]
 					);
 					pDlg_.dialog("open");
 					
@@ -688,7 +654,143 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
     );
 		
 	},
+	
+	// 得到用户当前的战斗数据
+	GetUserBattleData: function() {
+		_gdata.model_util.BlockMsgShow("...");
+		var singleton = this;
+    _gdata.model_netmgr.req_getUserBattleData(
+      _gdata.model_userdata.userdata.acckey,
+      _gdata.model_userdata.userdata.account,
+      function(data) {
+        _gdata.model_util.BlockMsgHide();
+				console.log("mybattle",data);
+        if (data.code != 200) {
+					_gdata.model_notify.showNotify("信息","得到战斗数据出错:"+data.code+":"+data.msg);
+					return;
+				}
+				
+				var pAllData = JSON.parse(data.msg);
+				if(pAllData.length <= 0){
+					_gdata.model_notify.showNotify("信息","当前没有战斗进行");
+					return;
+				}
+				
+// 				console.log("pAllData",pAllData);
+				
+				
+				var nCurTime = (new Date()).getTime();
+				
 
+				var pDlg_ = _gdata.model_jq("#dialog-CommonList");
+				var pDlg_ul = _gdata.model_jq("#dialog-CommonList ul");
+				var viewsize = _gdata.model_util.GetViewportSize();
+				pDlg_.dialog( "option", "width", viewsize[0]/4 );
+				pDlg_.dialog( "option", "title", "正在进行的战斗" );
+				pDlg_ul.empty();
+				var index = 1;
+				pAllData.forEach(function(onebattle){
+					var pTargetName = decodeURI(onebattle.targetname);
+					var nHasCostTime = nCurTime-onebattle.begintime;
+					var nHasCostTime_int = Math.floor(nHasCostTime/1000);
+					
+					pDlg_ul.append('<li id=\''+onebattle.targetid+'\'>进攻:->'+pTargetName+'<\/li>');
+				});
+				
+				_gdata.model_jq("#dialog-CommonList-List li").click(function() {
+					var poiid = this.getAttribute('id');
+					if(poiid == null){
+						return;
+					}
+					
+					pAllData.forEach(function(onebattle){
+						if(onebattle.targetid == poiid){
+							console.log("onebattle",onebattle);
+							
+							// 显示当前战斗的情况
+							var ppoiposarray = onebattle.targetpos.split(",");
+							var pposobj = new AMap.LngLat(parseFloat(ppoiposarray[0]), parseFloat(ppoiposarray[1]));
+							_gdata.model_map.panTo(pposobj);
+							_gdata.model_map.addClickOneMarker(pposobj, "这里");
+						}
+					});
+				});
+
+				pDlg_.dialog("option", "buttons", [{
+					text: "知道了",
+					icons: {
+						primary: "ui-icon-arrowthick-1-e"
+					},
+					click: function() {
+						pDlg_.dialog("close");
+					}
+				}]);
+				pDlg_.dialog("open");
+				
+// 				var pBattleData = pAllData[0];
+				
+// 				var posarray_target = pBattleData.targetpos.split(',');
+// 				var pos_target = new AMap.LngLat(parseFloat(posarray_target[0]), parseFloat(posarray_target[1]));
+
+				
+
+// 				var pProcessData = new Map();
+// 				for(var i = 0; i < pBattleData.sourceposs.length; ++ i){
+// 					var posarray1 = pBattleData.sourceposs[i].split(',');
+// 					var pos1 = new AMap.LngLat(parseFloat(posarray1[0]), parseFloat(posarray1[1]));			
+// 					_gdata.model_map.startGetDrivingData(pos1,pos_target,function(status,result){
+// 						if(status != "complete"){
+// 							_gdata.model_notify.showNotify("信息", "计算路线错误:"+status);
+// 							return;
+// 						}
+// 						var pRouteData = result.routes[0];
+// 						var nCostTime = pRouteData.time;
+
+// 						var poiname = "null";
+// 						for(var j = 0; j < pBattleData.sourceposs.length; ++j){
+// 							var lng = result.origin.getLng();
+// 							var lat = result.origin.getLat();
+// 							var posArray = pBattleData.sourceposs[j].split(',');
+// 							if(parseFloat(posArray[0]) == lng && parseFloat(posArray[1]) == lat){
+// 								poiname = decodeURI(pBattleData.sourcenames[j]);
+// 								break;
+// 							}
+// 						}
+// 						console.log(poiname+":>---"+nHasCostTime_int+"/"+nCostTime+"--->");
+// 						pProcessData.set(poiname,nCostTime);
+
+// 						if(pProcessData.size >= pBattleData.sourceposs.length){
+// 							for (var [key, value] of pProcessData.entries()) {
+// 								console.log(key + " = " + value);
+// 								pDlg_ul.append('<li id=\''+(index++)+'\'>'+key+":>---"+nHasCostTime_int+"/"+value+'---> <\/li>');
+// 							}
+
+// 							pDlg_.dialog(
+// 								"option", 
+// 								"buttons", 
+// 								[
+// 									{
+// 										text: "知道了",
+// 										icons: {
+// 											primary: "ui-icon-arrowthick-1-e"
+// 										},
+// 										click: function() {
+// 											pDlg_.dialog("close");
+// 										}
+// 									}
+// 								]
+// 							);
+// 							pDlg_.dialog("open");
+// 						}
+// 					},singleton);
+// 				}
+				
+				
+				
+      },
+      singleton
+    );
+	},
 
   onMapEvent: function(sType, pPos) {
     var singleton = this;
@@ -818,7 +920,8 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
         name: '我的巢穴',
 				id: 2
       }, {
-        name: 'Modify Map Type'
+        name: '我的战斗',
+				id: 3
       }, {
         name: 'Store My Position'
       }, {
@@ -871,6 +974,9 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 					case 2:{
 						singleton.onGetUserPoisData();						
 						}break;
+					case 3:{
+						singleton.GetUserBattleData();
+					}break;
           default:
             {
 

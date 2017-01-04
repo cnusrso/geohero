@@ -325,5 +325,26 @@ define(['md5'], {
 		},this);
 	},
 	
+	req_getUserBattleData: function(acckey, username, funcCallback, pCallOwner){
+		this.checkConnect(function(szState){
+			if(szState == "reconnect")
+				{
+					this.req_getUserBattleData(acckey, username, funcCallback, pCallOwner);
+				}
+			else if(szState == "connect")
+				{
+					var pMsg = {};
+					pMsg.acckey = acckey;
+					pMsg.username = username;
+
+
+					window.pomelo.request("connector.entryHandler.req_getUserBattleData", pMsg, function(data) {
+
+						funcCallback.call(pCallOwner, data);
+
+					});
+				}
+		},this);
+	},
 	
 });

@@ -195,6 +195,7 @@ function myfun_crypto (text) {
   return crypto.createHash('md5').update(text).digest('hex');
 };
 
+var sGaodeWebServiceKey = '957606db3c3518da4a5dda76d1641008';
 var sKey = '957606db3c3518da4a5dda76d1641008';
 var sYunTuKey = '957606db3c3518da4a5dda76d1641008';
 var sPrivateKey = 'b6e5a1d7de8220063267663c21e6e171';
@@ -279,6 +280,30 @@ function redis_DelDataByKey(szKey){
 	myrediscl.del(szKey);
 }
 // end redis function ...............................................................
+
+// begin gaode web api function .........................................................
+
+function gaodeweb_GetDistanceData(pSourcePoints,pTargetPoint,funcCallback,pCallOwner){
+	var sHttpGetHead = "http://restapi.amap.com/v3/distance?";
+	var sSig = myfun_crypto("destination="+pTargetPoint+"&key="+sGaodeWebServiceKey+"&origins="+pSourcePoints+sPrivateKey);
+	var sFullURL = sHttpGetHead+"origins="+pSourcePoints+"&destination="+pTargetPoint+"&key="+sGaodeWebServiceKey+"&sig="+sSig;
+	myrequest(sFullURL, function(error, response, body) {
+		var nResult = 0;
+		if (!error && response.statusCode == 200) {
+				nResult = 0;
+		} else {
+			console.log("gaodeweb_GetDistanceData failed:->",error, response, body);
+			nResult = 1;
+		}
+		if (pCallOwner != null && funcCallback != null) {
+			funcCallback.call(pCallOwner, nResult, body);
+		} else if (funcCallback != null) {
+			funcCallback(nResult, body);
+		}
+	});
+}
+
+// end gaode web api function ..............................................................
 
 // begin yuntu function ................................................................
 
@@ -1489,7 +1514,32 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 				}
 			},
 			function(pUserData, pUserBattleArray, pDestPoiData, pSourcePoiDatas, callback){
-				console.log("5 calcate attack!!!");
+				console.log("5 calcate distance data!!!");
+				var pSourcePoints = "";
+				pSourcePoiDatas.forEach(function(value, key, map){
+					pSourcePoints = pSourcePoints+value.datas[0]._location+"|";
+				});
+				var pTargetPoint = pDestPoiData.datas[0]._location;
+				
+				var pFuncDoDistance = function(nResult,sBody){
+					if(nResult !== 0){
+						return callback(213,'Web Error Get Distance Data');
+					}
+					var pDistanceData = JSON.parse(sBody);
+					if(pDistanceData.status != 1){
+						// 请求失败
+						console.log("Request Distance Error,info:->"+pDistanceData.info+" infocode:->"+pDistanceData.infocode);
+						
+						// 再请求？？
+						return gaodeweb_GetDistanceData(pSourcePoints,pTargetPoint,pFuncDoDistance);
+					}
+					return callback(null, pUserData, pUserBattleArray, pDestPoiData,pSourcePoiDatas,pDistanceData);
+				};
+				gaodeweb_GetDistanceData(pSourcePoints,pTargetPoint,pFuncDoDistance);
+				
+			},
+			function(pUserData, pUserBattleArray, pDestPoiData, pSourcePoiDatas, pDistanceData, callback){
+				console.log("6 calcate attack!!!");
 
 				// 1 目标点设置处于战斗状态。
 				pDestPoiData.datas[0].battlestatus = 1;// 目标点
@@ -1501,8 +1551,10 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 				});
 				// 3 缓存下这个战斗信息
 				var pBattleData = {};
+				pBattleData.distance = pDistanceData;
 				pBattleData.targetid = pDestPoiData.datas[0].poiid;
 				pBattleData.targetpos = pDestPoiData.datas[0]._location;
+				pBattleData.targetname = pDestPoiData.datas[0]._name;
 				pBattleData.sourceids = new Array(pSourcePoiDatas.size);
 				pBattleData.sourceposs = new Array(pSourcePoiDatas.size);
 				pBattleData.sourcenames = new Array(pSourcePoiDatas.size);
@@ -1539,3 +1591,89 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 		}
 	);
 };
+
+// 得到用户的当前战斗数据。
+Handler.prototype.req_getUserBattleData = function(msg,session,next) {
+	if(msg.acckey === undefined)
+	{
+		console.log('Not Find "AccKey"');
+		next(null, {code: 201, msg: 'Not Defined AccKey'});
+		return;
+	}
+	if(msg.username === undefined)
+	{
+		console.log('Not Find "username"');
+		next(null, {code: 201, msg: 'Not Defined username'});
+		return;
+	}
+
+	myasync.waterfall(
+		[
+			function(callback) {
+				console.log("1 check user right!!!");
+				mycache_GetUserData(msg.username,function(szResult,pUserData){
+					if (szResult != "success") {
+						console.log('Not Find User:->',msg.username);
+						return callback(202,'Not Find User');
+					}
+					if (szResult == "success") {
+						if (msg.acckey != pUserData.datas[0].loginkey) {
+							return callback(203,'Acckey Is Error');
+						}
+					}
+					return callback(null, pUserData);	
+				});
+			},
+			function(pUserData, callback) {
+				console.log("2 get users battle key");
+				var pUserBattleKeyArray = [];
+				var pKey_userid2battlekey = pRedisKeys.key_userid_battlekey(pUserData.datas[0]._id);
+				redis_GetDataByKey(pKey_userid2battlekey,function(sErr,sData){
+					if(sErr != null || sData == null){
+						// 无数据
+						pUserBattleKeyArray = [];
+					}else{
+						// 还有旧数据
+						pUserBattleKeyArray = JSON.parse(sData);
+						// todo 需要检测下对应的战斗是否已结束
+						
+					}
+					return callback(null,pUserData,pUserBattleKeyArray);
+				});
+			},
+			function(pUserData, pUserBattleKeyArray, callback) {
+				console.log("3 get users battle data");
+				
+				var pAllData = [];
+				if(pUserBattleKeyArray.length == 0){
+					return callback(null,JSON.stringify(pAllData));
+				}
+				for(var i = 0; i < pUserBattleKeyArray.length; ++ i){
+					
+					redis_GetDataByKey(pUserBattleKeyArray[i],function(sErr,sData){
+						if(sErr != null || sData == null){
+							// 无数据
+							return callback(204,'Not Find Battle Data');
+						}
+						
+						
+						pAllData.push(JSON.parse(sData));
+						// todo 需要检测下对应的战斗是否已结束
+						if(pAllData.length >= pUserBattleKeyArray.length){
+							console.log("Get User Battle Data Ok:->",pAllData);
+							return callback(null,JSON.stringify(pAllData));
+						}
+					});
+				}
+			},
+		],
+		function(err, result) {
+				if(err !== null){
+					return next(null,{code:err,msg:result});
+				} else {
+					return next(null,{code:200,msg:result});
+				}
+			}
+		);
+};
+
