@@ -289,6 +289,27 @@ define(["amap"], {
 // 		);
 		
 	},
+	
+	showPolyline:function(pathArray){
+		
+		//定义折线对象
+		var polyline=new AMap.Polyline({
+				path:pathArray,     //设置折线的节点数组
+				strokeColor:"#111111",
+				strokeOpacity:0.9,
+				strokeWeight:9,
+				strokeStyle:"dashed",
+				strokeDasharray:[10,5]
+		});
+		polyline.setMap(this.maper);//地图上添加折线
+		return polyline;
+	},
+	
+	hidePolyline:function(pPolyObj){
+		pPolyObj.setMap(null);
+	},
+	
+	
 
 	readyMarker:function(pos){
 		var singleton = this;

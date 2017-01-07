@@ -1547,6 +1547,10 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 				// 2 源点设置处于战斗状态。
 				pSourcePoiDatas.forEach(function(value, key, map){
 					value.datas[0].battlestatus = 2;// 源点
+					if(key == null){
+						console.log("poi key is null",value);
+						return;
+					}
 					mycache_SetPoiData(key,JSON.stringify(value));
 				});
 				// 3 缓存下这个战斗信息

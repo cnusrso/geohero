@@ -370,8 +370,9 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 				var index = 1;
 				for (var j=0;j<pAllSourceData.count;j++){
 					var pName = decodeURI(pAllSourceData.datas[j]._name);
+					var pPositions = pAllSourceData.datas[j]._location;
 					pSelectedPoi.set(j,0);
-					pDlg_ul.append('<li id=\''+(index++)+'\' index=\''+j+'\'>'+pName+' <\/li>');
+					pDlg_ul.append('<li id=\''+(index++)+'\' index=\''+j+'\' location=\''+pPositions+'\'>'+pName+' <\/li>');
 // 					+'\n路程:300米 用时:5分钟'
 				}
 				
@@ -384,6 +385,18 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 						pSelectedPoi.set(nIndex,1);// 选中了这个点
 						this.innerHTML += pTextSel;
 						nSelectedPoiNum ++;
+						
+						var ppoipos = this.getAttribute('location');
+						console.log("ppoipos",ppoipos);   
+						if(ppoipos == null){
+							return;
+						}
+						
+						var ppoiposarray = ppoipos.split(",");
+						var pposobj = new AMap.LngLat(parseFloat(ppoiposarray[0]), parseFloat(ppoiposarray[1]));
+						_gdata.model_map.panTo(pposobj);
+						_gdata.model_map.addClickOneMarker(pposobj, "在这里");
+						
 					} else {
 						pSelectedPoi.set(nIndex,0);// 不选这个点
 						this.innerHTML = this.innerHTML.substr(0,this.innerHTML.length-pTextSel.length);
@@ -708,10 +721,35 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 							console.log("onebattle",onebattle);
 							
 							// 显示当前战斗的情况
-							var ppoiposarray = onebattle.targetpos.split(",");
-							var pposobj = new AMap.LngLat(parseFloat(ppoiposarray[0]), parseFloat(ppoiposarray[1]));
-							_gdata.model_map.panTo(pposobj);
-							_gdata.model_map.addClickOneMarker(pposobj, "这里");
+							var posarray_target = onebattle.targetpos.split(',');
+							var pos_target = new AMap.LngLat(parseFloat(posarray_target[0]), parseFloat(posarray_target[1]));													
+							_gdata.model_map.panTo(pos_target);
+							_gdata.model_map.addClickOneMarker(pos_target, "目标在这里");
+							
+							for (var i = 0; i < onebattle.sourceposs.length; ++i) {
+								var posarray1 = onebattle.sourceposs[i].split(',');
+								var possource = new AMap.LngLat(parseFloat(posarray1[0]), parseFloat(posarray1[1]));
+								_gdata.model_map.startGetDrivingData(possource, pos_target, function(status, result) {
+									if (status != "complete") {
+										_gdata.model_notify.showNotify("信息", "计算路线错误:" + status);
+										return;
+									}
+									console.log("source->target",result);
+									var pRouteData = result.routes[0];
+									var nCostTime = pRouteData.time;
+									
+									var pathPoss = new Array();//经纬度坐标数组
+									var nAllTime = 0;
+									pRouteData.steps.forEach(function(onesteps){
+										nAllTime += onesteps.time;
+										onesteps.path.forEach(function(onepath){
+											pathPoss.push(onepath);
+										});
+									});
+									console.log("cost times:",nCostTime,nAllTime);
+									_gdata.model_map.showPolyline(pathPoss);
+								}, singleton);
+							}
 						}
 					});
 				});
