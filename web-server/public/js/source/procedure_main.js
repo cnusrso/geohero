@@ -476,32 +476,59 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 		var pDlg_ul = _gdata.model_jq("#dialog-CommonList ul");
 		var viewsize = _gdata.model_util.GetViewportSize();
 		pDlg_.dialog( "option", "width", viewsize[0]/4 );
-		pDlg_.dialog( "option", "title", "战斗中" );
+		pDlg_.dialog( "option", "title", "战斗开始" );
 		pDlg_ul.empty();
 		var index = 1;
-		
-		pBattleData.distance.results.forEach(function(ele){
-			var nCostTime = parseInt(ele.duration);
-			var originId = parseInt(ele.origin_id);
-			var poiname = decodeURI(pBattleData.sourcenames[originId-1]);
-			pDlg_ul.append('<li id=\''+(index++)+'\'>'+poiname+":>---"+nHasCostTime_int+"/"+nCostTime+'---> <\/li>');
-		});
-		pDlg_.dialog(
-			"option",
-			"buttons", [{
-				text: "好",
+		var posindex = 0;
+		pBattleData.sourceposs.forEach(function(onesourcepos){
+			// find distance data by start pos
+			for(var i = 0; i < pBattleData.distance.length; ++ i){
+				if(pBattleData.distance[i].route.origin != onesourcepos){
+					continue;
+				}
+				
+				var poiname = decodeURI(pBattleData.sourcenames[posindex]);
+				var nCostTime = parseInt(pBattleData.distance[i].route.paths[0].duration);
+				pDlg_ul.append('<li id=\''+(index++)+'\' flag=\'none\'>从 '+poiname+' 出发<\/li>');
+				pDlg_ul.append('<li id=\''+(index++)+'\' flag=\'timecounter\'>    离到达还有:'+nCostTime+'秒<\/li>');
+				
+				// show walk anim...
+				var pFullPathPoss = [];//cur paths location array				
+				pBattleData.distance[i].route.paths[0].steps.forEach(function(onestep){
+					var pCurStepPathArray = onestep.polyline.split(";");
+					pCurStepPathArray.forEach(function(onePosText){
+						var onePosArray = onePosText.split(",");
+						pFullPathPoss.push(new AMap.LngLat(parseFloat(onePosArray[0]),parseFloat(onePosArray[1])));
+					});
+				});
+				
+				if(pFullPathPoss.length >= 0){
+					var nPathDistance_KM = parseInt(pBattleData.distance[i].route.paths[0].distance)/1000;
+					var nPathDuration_Hour = parseInt(pBattleData.distance[i].route.paths[0].duration)/3600;
+					var nSpeed = nPathDistance_KM/nPathDuration_Hour;
+					_gdata.model_map.addMoveAloneMarker(pFullPathPoss, nSpeed,0,"battleresult:marker:"+i);
+					_gdata.model_map.addPolyLine(pFullPathPoss,"battleresult:line:"+i);
+				}
+				
+			}
+			posindex++;
+		});		
+		pDlg_.dialog("option", "buttons", [{
+				text: "关闭",
 				icons: {
 					primary: "ui-icon-arrowthick-1-e"
 				},
 				click: function() {
 					pDlg_.dialog("close");
+					// clear battle process data..
+					for(var i = 0; i < pBattleData.sourceposs.length; ++ i){
+						_gdata.model_map.removeMarker("battleresult:marker:"+i)
+						_gdata.model_map.removePolyLine("battleresult:line:"+i)
+					}	
 				}
 			}]
 		);
 		pDlg_.dialog("open");
-		
-		
-		
 	},
 	
 	onOccupyEmptyPoi: function(npoiid,npoitypeid,spoiname,spoipostext){
@@ -681,79 +708,91 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
         if (data.code != 200) {
 					_gdata.model_notify.showNotify("信息","得到战斗数据出错:"+data.code+":"+data.msg);
 					return;
-				}
-				
+				}				
 				var pAllData = JSON.parse(data.msg);
 				if(pAllData.length <= 0){
 					_gdata.model_notify.showNotify("信息","当前没有战斗进行");
 					return;
 				}
 				
-// 				console.log("pAllData",pAllData);
-				
-				
-				var nCurTime = (new Date()).getTime();
-				
-
 				var pDlg_ = _gdata.model_jq("#dialog-CommonList");
 				var pDlg_ul = _gdata.model_jq("#dialog-CommonList ul");
 				var viewsize = _gdata.model_util.GetViewportSize();
 				pDlg_.dialog( "option", "width", viewsize[0]/4 );
 				pDlg_.dialog( "option", "title", "正在进行的战斗" );
 				pDlg_ul.empty();
-				var index = 1;
+				// show every battle...
+				var index = 0;
 				pAllData.forEach(function(onebattle){
 					var pTargetName = decodeURI(onebattle.targetname);
-					var nHasCostTime = nCurTime-onebattle.begintime;
-					var nHasCostTime_int = Math.floor(nHasCostTime/1000);
 					
-					pDlg_ul.append('<li id=\''+onebattle.targetid+'\'>进攻:->'+pTargetName+'<\/li>');
+					pDlg_ul.append('<li id=\''+index+'\'>第'+(index+1)+'场<\/li>');
+					
+					var index2 = 0;
+					onebattle.sourcenames.forEach(function(onesourcename){
+						var pSourceName = decodeURI(onesourcename);
+						pDlg_ul.append('<li id=\''+index+'\' subid=\''+index2+'\'>    '+pSourceName+' >>> '+pTargetName+'<\/li>');
+						index2++;
+					});
+					
+					index++;
 				});
 				
+				// deal click on source poi
 				_gdata.model_jq("#dialog-CommonList-List li").click(function() {
-					var poiid = this.getAttribute('id');
-					if(poiid == null){
-						return;
-					}
+					var nBattleIndex = parseInt(this.getAttribute('id'));
+// 					var nSourceIndex = parseInt(this.getAttribute('subid'));
+					var nCurTime = (new Date()).getTime();
+					var nHasCostTime = Math.floor((nCurTime-pAllData[nBattleIndex].begintime)/1000);
 					
-					pAllData.forEach(function(onebattle){
-						if(onebattle.targetid == poiid){
-							console.log("onebattle",onebattle);
+					_gdata.model_map.removeMarker();
+					_gdata.model_map.removePolyLine();
+					
+					for(var i = 0; i < pAllData[nBattleIndex].distance.length; ++ i){
+						// show walk anim...
+						var pFullPathPoss = [];//cur paths location array
+						var nCurInPos = -1;
+						var nAllDistance = 0;
+						var nAllTime = 0;		
+						pAllData[nBattleIndex].distance[i].route.paths[0].steps.forEach(function(onestep){
+							nAllDistance += parseInt(onestep.distance);
+							nAllTime += parseInt(onestep.duration);
+							var pCurStepPathArray = onestep.polyline.split(";");// 当前路径的数组。
 							
-							// 显示当前战斗的情况
-							var posarray_target = onebattle.targetpos.split(',');
-							var pos_target = new AMap.LngLat(parseFloat(posarray_target[0]), parseFloat(posarray_target[1]));													
-							_gdata.model_map.panTo(pos_target);
-							_gdata.model_map.addClickOneMarker(pos_target, "目标在这里");
-							
-							for (var i = 0; i < onebattle.sourceposs.length; ++i) {
-								var posarray1 = onebattle.sourceposs[i].split(',');
-								var possource = new AMap.LngLat(parseFloat(posarray1[0]), parseFloat(posarray1[1]));
-								_gdata.model_map.startGetDrivingData(possource, pos_target, function(status, result) {
-									if (status != "complete") {
-										_gdata.model_notify.showNotify("信息", "计算路线错误:" + status);
-										return;
-									}
-									console.log("source->target",result);
-									var pRouteData = result.routes[0];
-									var nCostTime = pRouteData.time;
-									
-									var pathPoss = new Array();//经纬度坐标数组
-									var nAllTime = 0;
-									pRouteData.steps.forEach(function(onesteps){
-										nAllTime += onesteps.time;
-										onesteps.path.forEach(function(onepath){
-											pathPoss.push(onepath);
-										});
-									});
-									console.log("cost times:",nCostTime,nAllTime);
-									_gdata.model_map.showPolyline(pathPoss);
-								}, singleton);
+							if(nCurInPos == -1){// 找到当前走到哪了。。
+// 								console.log("nHasCostTime < nAllTime",nHasCostTime,nAllTime);
+								if(nHasCostTime < nAllTime){
+									// in current path..
+									var nDelayTime = nHasCostTime - (nAllTime-onestep.duration);
+									nCurInPos = pFullPathPoss.length+Math.floor(pCurStepPathArray.length*(nDelayTime/onestep.duration));									
+								}else{
+									// maybe in next.
+								}
 							}
-						}
-					});
-				});
+							
+							
+							pCurStepPathArray.forEach(function(onePosText){
+								var onePosArray = onePosText.split(",");
+								
+								pFullPathPoss.push(new AMap.LngLat(parseFloat(onePosArray[0]),parseFloat(onePosArray[1])));
+							});
+							
+						});
 
+						if(pFullPathPoss.length >= 0){
+							var nPathDistance_KM = parseInt(pAllData[nBattleIndex].distance[i].route.paths[0].distance)/1000;
+							var nPathDuration_Hour = parseInt(pAllData[nBattleIndex].distance[i].route.paths[0].duration)/3600;
+							var nSpeed = nPathDistance_KM/nPathDuration_Hour;
+							console.log("process:",nCurInPos,pFullPathPoss.length);
+							if(nCurInPos >= 0){
+								_gdata.model_map.addMoveAloneMarker(pFullPathPoss, nSpeed,nCurInPos,"userbattle:marker:"+nBattleIndex+":"+i);
+							}else{
+								_gdata.model_map.addStaticMarker(pFullPathPoss[pFullPathPoss.length-1], "userbattle:marker:"+nBattleIndex+":"+i);
+							}
+							_gdata.model_map.addPolyLine(pFullPathPoss,"userbattle:line:"+nBattleIndex+":"+i);
+						}
+					}					
+				});
 				pDlg_.dialog("option", "buttons", [{
 					text: "知道了",
 					icons: {
@@ -761,69 +800,11 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
 					},
 					click: function() {
 						pDlg_.dialog("close");
+						_gdata.model_map.removeMarker();
+						_gdata.model_map.removePolyLine();
 					}
 				}]);
 				pDlg_.dialog("open");
-				
-// 				var pBattleData = pAllData[0];
-				
-// 				var posarray_target = pBattleData.targetpos.split(',');
-// 				var pos_target = new AMap.LngLat(parseFloat(posarray_target[0]), parseFloat(posarray_target[1]));
-
-				
-
-// 				var pProcessData = new Map();
-// 				for(var i = 0; i < pBattleData.sourceposs.length; ++ i){
-// 					var posarray1 = pBattleData.sourceposs[i].split(',');
-// 					var pos1 = new AMap.LngLat(parseFloat(posarray1[0]), parseFloat(posarray1[1]));			
-// 					_gdata.model_map.startGetDrivingData(pos1,pos_target,function(status,result){
-// 						if(status != "complete"){
-// 							_gdata.model_notify.showNotify("信息", "计算路线错误:"+status);
-// 							return;
-// 						}
-// 						var pRouteData = result.routes[0];
-// 						var nCostTime = pRouteData.time;
-
-// 						var poiname = "null";
-// 						for(var j = 0; j < pBattleData.sourceposs.length; ++j){
-// 							var lng = result.origin.getLng();
-// 							var lat = result.origin.getLat();
-// 							var posArray = pBattleData.sourceposs[j].split(',');
-// 							if(parseFloat(posArray[0]) == lng && parseFloat(posArray[1]) == lat){
-// 								poiname = decodeURI(pBattleData.sourcenames[j]);
-// 								break;
-// 							}
-// 						}
-// 						console.log(poiname+":>---"+nHasCostTime_int+"/"+nCostTime+"--->");
-// 						pProcessData.set(poiname,nCostTime);
-
-// 						if(pProcessData.size >= pBattleData.sourceposs.length){
-// 							for (var [key, value] of pProcessData.entries()) {
-// 								console.log(key + " = " + value);
-// 								pDlg_ul.append('<li id=\''+(index++)+'\'>'+key+":>---"+nHasCostTime_int+"/"+value+'---> <\/li>');
-// 							}
-
-// 							pDlg_.dialog(
-// 								"option", 
-// 								"buttons", 
-// 								[
-// 									{
-// 										text: "知道了",
-// 										icons: {
-// 											primary: "ui-icon-arrowthick-1-e"
-// 										},
-// 										click: function() {
-// 											pDlg_.dialog("close");
-// 										}
-// 									}
-// 								]
-// 							);
-// 							pDlg_.dialog("open");
-// 						}
-// 					},singleton);
-// 				}
-				
-				
 				
       },
       singleton

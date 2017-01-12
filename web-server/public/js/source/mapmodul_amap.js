@@ -21,6 +21,10 @@ define(["amap"], {
 	pFuncEventCallbackOwner:null,
 
 	pMarker:null,
+	pPolyline:null,
+	
+	pMarkers: new Map(),
+	pPolyLines: new Map(),
 
 	init: function(sContainerName) {
 
@@ -290,38 +294,115 @@ define(["amap"], {
 		
 	},
 	
-	showPolyline:function(pathArray){
-		
-		//定义折线对象
-		var polyline=new AMap.Polyline({
-				path:pathArray,     //设置折线的节点数组
-				strokeColor:"#111111",
-				strokeOpacity:0.9,
-				strokeWeight:9,
-				strokeStyle:"dashed",
-				strokeDasharray:[10,5]
-		});
-		polyline.setMap(this.maper);//地图上添加折线
-		return polyline;
+	clearMapObj:function(){
+		this.maper.clearMap();
 	},
 	
-	hidePolyline:function(pPolyObj){
-		pPolyObj.setMap(null);
+	addPolyLine:function(pathArray,Id){
+		var pPolyline = new AMap.Polyline({
+			map: this.maper,
+			extData:Id,
+			path: pathArray, //设置折线的节点数组
+			strokeColor: "#111111",
+			strokeOpacity: 0.9,
+			strokeWeight: 9,
+			strokeStyle: "dashed",
+			strokeDasharray: [10, 5]
+		});
+		this.pPolyLines.set(Id,pPolyline);
+	},
+	getPolyLine:function(Id){
+		return this.pPolyLines.get(Id);
+	},
+	removePolyLine:function(Id){
+		if(Id === undefined){
+			var singleton = this;
+			this.pPolyLines.forEach(function(value,key,map){
+				singleton.maper.remove(value);
+			});
+			this.pPolyLines.clear();
+			return true;
+		}
+		var value = this.pPolyLines.get(Id);
+		if(value === undefined){
+			return false;
+		}
+		this.maper.remove(value);
+		return this.pPolyLines.delete(Id);
+	},
+	
+	addStaticMarker:function(pPos,Id,img){
+		var _img = "http://webapi.amap.com/theme/v1.3/markers/n/mark_b.png";
+		if(img !== undefined){
+			_img = img;
+		}
+		var pMarker = new AMap.Marker({
+			map: this.maper,
+			extData:Id,
+			position: pPos,
+			icon: _img,
+			draggable: false,
+			cursor: 'move',
+			raiseOnDrag: false,
+			clickable: true
+		});
+		this.pMarkers.set(Id,pMarker);
+	},
+	addMoveAloneMarker:function(pPath,nSpeed_KMpHour,nStartIndex,Id,img){
+		var _img = "http://webapi.amap.com/theme/v1.3/markers/n/mark_b.png";
+		if(img !== undefined){
+			_img = img;
+		}
+		var pMarker = new AMap.Marker({
+			map: this.maper,
+			extData:Id,
+			position: pPath[nStartIndex],
+			icon: _img,
+			draggable: false,
+			cursor: 'move',
+			raiseOnDrag: false,
+			clickable: true
+		});
+		var pNewPath = [];
+// 		console.log("pPath",nStartIndex,pPath.length,pPath);
+		for(var i = nStartIndex; i < pPath.length; ++ i){
+			pNewPath.push(pPath[i]);
+		}
+// 		console.log("pNewPath",pNewPath);
+		pMarker.moveAlong(pNewPath,nSpeed_KMpHour);
+		this.pMarkers.set(Id,pMarker);
+	},
+	getMarker:function(Id){
+		return this.pMarkers.get(Id);
+	},
+	removeMarker:function(Id){
+		if(Id === undefined){
+			var singleton = this;
+			this.pMarkers.forEach(function(value,key,map){
+				value.stopMove();
+				singleton.maper.remove(value);
+			});
+			this.pMarkers.clear();
+			return true;
+		}
+		var value = this.pMarkers.get(Id);
+		if(value === undefined){
+			return false;
+		}
+		value.stopMove();
+		this.maper.remove(value);
+		return this.pMarkers.delete(Id);
 	},
 	
 	
 
 	readyMarker:function(pos){
 		var singleton = this;
-
-		if(singleton.pMarker != null)
-		{
-			if(singleton.pMarker.visible)
-				singleton.pMarker.hide();
+		if(singleton.pMarker != null){
+			singleton.pMarker.hide();
 		}
 
-		if(singleton.pMarker == null)
-		{
+		if(singleton.pMarker == null){
 			singleton.pMarker = new AMap.Marker({
 					map: this.maper,
 					position: pos,
@@ -331,13 +412,14 @@ define(["amap"], {
 					raiseOnDrag: false,
 					clickable: true
 			});
-		}
-		else
-		{
+		}else{
+			singleton.pMarker.setMap(this.maper);
 			singleton.pMarker.setPosition(pos);
 			singleton.pMarker.show();
 		}
 	},
+	
+	
 	
 	addClickOneMarker:function(pos,szLabel){
 		this.readyMarker(pos);

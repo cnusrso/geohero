@@ -303,6 +303,49 @@ function gaodeweb_GetDistanceData(pSourcePoints,pTargetPoint,funcCallback,pCallO
 	});
 }
 
+function gaodeweb_GetDrivingData(pSourcePosition,pTargetPosition,pSourcePoi,pTargetPoi,funcCallback,pCallOwner,pCustomData){
+	var sHttpGetHead = "http://restapi.amap.com/v3/direction/driving?";
+	var sSig = myfun_crypto("destination="+pTargetPosition+"&destinationid="+pTargetPoi+"&key="+sGaodeWebServiceKey+"&origin="+pSourcePosition+"&originid="+pSourcePoi+sPrivateKey);
+	var sFullURL = sHttpGetHead+"origin="+pSourcePosition+"&originid="+pSourcePoi+"&destination="+pTargetPosition+"&destinationid="+pTargetPoi+"&key="+sGaodeWebServiceKey+"&sig="+sSig;
+	console.log("gaodeweb_GetDrivingData:->",sFullURL);
+	myrequest(sFullURL, function(error, response, body) {		
+		var nResult = 0;
+		if (!error && response.statusCode == 200) {
+				nResult = 0;
+		} else {
+			console.log("gaodeweb_GetDrivingData failed:->",error, response, body);
+			nResult = 1;
+		}
+// 		console.log("gaodeweb_GetDrivingData body:->",body);
+		if (pCallOwner != null && funcCallback != null) {
+			funcCallback.call(pCallOwner, nResult, body, pCustomData);
+		} else if (funcCallback != null) {
+			funcCallback(nResult, body, pCustomData);
+		}
+	});
+}
+
+function gaodeweb_GetWalkingData(pSourcePosition,pTargetPosition,funcCallback,pCallOwner,pCustomData){
+	var sHttpGetHead = "http://restapi.amap.com/v3/direction/walking?";
+	var sSig = myfun_crypto("destination="+pTargetPosition+"&key="+sGaodeWebServiceKey+"&origin="+pSourcePosition+sPrivateKey);
+	var sFullURL = sHttpGetHead+"origin="+pSourcePosition+"&destination="+pTargetPosition+"&key="+sGaodeWebServiceKey+"&sig="+sSig;
+	console.log("gaodeweb_GetWalkingData:->",sFullURL);
+	myrequest(sFullURL, function(error, response, body) {		
+		var nResult = 0;
+		if (!error && response.statusCode == 200) {
+				nResult = 0;
+		} else {
+			console.log("gaodeweb_GetWalkingData failed:->",error, response, body);
+			nResult = 1;
+		}
+		if (pCallOwner != null && funcCallback != null) {
+			funcCallback.call(pCallOwner, nResult, body, pCustomData);
+		} else if (funcCallback != null) {
+			funcCallback(nResult, body, pCustomData);
+		}
+	});
+}
+
 // end gaode web api function ..............................................................
 
 // begin yuntu function ................................................................
@@ -311,6 +354,7 @@ function yuntu_GetDataByFilter(sTableId,szFilter,funcCallback,pCallOwner){
 	var sHttpGetHead = "http://yuntuapi.amap.com/datamanage/data/list?";
 	var sSig = myfun_crypto("filter="+szFilter+"&key="+sYunTuKey+"&tableid="+sTableId+sPrivateKey);
 	var sFullURL = sHttpGetHead+"tableid="+sTableId+"&filter="+szFilter+"&key="+sYunTuKey+"&sig="+sSig;
+	console.log("yuntu_GetDataByFilter:->",sFullURL);
 	myrequest(sFullURL, function(error, response, body) {
 		var nResult = 0;
 		if (!error && response.statusCode == 200) {
@@ -1514,31 +1558,44 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 				}
 			},
 			function(pUserData, pUserBattleArray, pDestPoiData, pSourcePoiDatas, callback){
-				console.log("5 calcate distance data!!!");
-				var pSourcePoints = "";
-				pSourcePoiDatas.forEach(function(value, key, map){
-					pSourcePoints = pSourcePoints+value.datas[0]._location+"|";
-				});
+				console.log("5 calcate walking data!!!");
 				var pTargetPoint = pDestPoiData.datas[0]._location;
+				var pTargetPoi = pDestPoiData.datas[0].poiid;
+				var pAllDrivingData = [];
 				
-				var pFuncDoDistance = function(nResult,sBody){
+				
+				var pFuncDoDistance = function(nResult,sBody,pCustomData){
 					if(nResult !== 0){
-						return callback(213,'Web Error Get Distance Data');
+						return callback(213,'Web Error Get Walking Data');
 					}
+					console.log("walking data length",sBody.length);
 					var pDistanceData = JSON.parse(sBody);
 					if(pDistanceData.status != 1){
 						// 请求失败
-						console.log("Request Distance Error,info:->"+pDistanceData.info+" infocode:->"+pDistanceData.infocode);
+						console.log("Request Walking Error,info:->"+pDistanceData.info+" infocode:->"+pDistanceData.infocode);
 						
 						// 再请求？？
-						return gaodeweb_GetDistanceData(pSourcePoints,pTargetPoint,pFuncDoDistance);
+						var pSourcePoint = pCustomData[0];
+						var pSourcePoi = pCustomData[1];
+						return gaodeweb_GetWalkingData(pSourcePoint,pTargetPoint,pFuncDoDistance,null,pCustomData);
+// 						return callback(214,'Web Error Get Walking Data');
 					}
-					return callback(null, pUserData, pUserBattleArray, pDestPoiData,pSourcePoiDatas,pDistanceData);
+					pAllDrivingData.push(pDistanceData);
+					if(pAllDrivingData.length >= pSourcePoiDatas.size){
+						return callback(null, pUserData, pUserBattleArray, pDestPoiData,pSourcePoiDatas,pAllDrivingData);
+					}
 				};
-				gaodeweb_GetDistanceData(pSourcePoints,pTargetPoint,pFuncDoDistance);
+				pSourcePoiDatas.forEach(function(value, key, map){
+					var pSourcePoint = value.datas[0]._location;
+					var pSourcePoi = value.datas[0].poiid;
+					
+					gaodeweb_GetWalkingData(pSourcePoint,pTargetPoint,pFuncDoDistance,null,[pSourcePoint,pSourcePoi]);
+				});
+				
+				
 				
 			},
-			function(pUserData, pUserBattleArray, pDestPoiData, pSourcePoiDatas, pDistanceData, callback){
+			function(pUserData, pUserBattleArray, pDestPoiData, pSourcePoiDatas, pAllDrivingData, callback){
 				console.log("6 calcate attack!!!");
 
 				// 1 目标点设置处于战斗状态。
@@ -1555,7 +1612,7 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 				});
 				// 3 缓存下这个战斗信息
 				var pBattleData = {};
-				pBattleData.distance = pDistanceData;
+				pBattleData.distance = pAllDrivingData;
 				pBattleData.targetid = pDestPoiData.datas[0].poiid;
 				pBattleData.targetpos = pDestPoiData.datas[0]._location;
 				pBattleData.targetname = pDestPoiData.datas[0]._name;
@@ -1578,11 +1635,12 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 				// 4 缓存userid对应战斗id
 				var pKey_userid2battlekey = pRedisKeys.key_userid_battlekey(pUserData.datas[0]._id);
 				pUserBattleArray.push(pKey_OneBattle);
-				redis_SetDataByKey(pKey_userid2battlekey,JSON.stringify(pUserBattleArray));
+				var pSendData = JSON.stringify(pUserBattleArray);
+				redis_SetDataByKey(pKey_userid2battlekey,pSendData);
 				
 				
 				
-				// 回应客户端。。。
+				// 回应客户端。。。包含当前这个战斗的数据
 				return callback(null, JSON.stringify(pBattleData));
 			},
 		],
@@ -1664,7 +1722,7 @@ Handler.prototype.req_getUserBattleData = function(msg,session,next) {
 						pAllData.push(JSON.parse(sData));
 						// todo 需要检测下对应的战斗是否已结束
 						if(pAllData.length >= pUserBattleKeyArray.length){
-							console.log("Get User Battle Data Ok:->",pAllData);
+// 							console.log("Get User Battle Data Ok:->",pAllData);
 							return callback(null,JSON.stringify(pAllData));
 						}
 					});
