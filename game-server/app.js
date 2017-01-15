@@ -1,5 +1,5 @@
 
-
+var myapp = null;
 
 
 
@@ -8,12 +8,12 @@ function startmain(){
   /**
    * Init app for client.
    */
-  var app = pomelo.createApp();
-  app.set('name', 'geohero_amap');
+  myapp = pomelo.createApp();
+  myapp.set('name', 'geohero_amap');
 
   // app configuration
-  app.configure('production|development', 'connector', function(){
-    app.set('connectorConfig',
+  myapp.configure('production|development', 'connector', function(){
+    myapp.set('connectorConfig',
       {
         connector : pomelo.connectors.hybridconnector,
         heartbeat : 3,
@@ -21,7 +21,11 @@ function startmain(){
         useProtobuf : true
       });
   });
-
+  
+  // 显示异常。。。
+  process.on('uncaughtException', function(err) {
+    console.error(' Caught exception: ' + err.stack);
+  });
   //处理退出的事件。。。
   //   var func_beforeexit = function(){
   //     var nDelaySecond = 5;
@@ -34,12 +38,12 @@ function startmain(){
   //      }, 5000);
 
   //     // do somethin when server exit...
-  //     app.rpc.connector.entryHandler.OnExit();
+  //     myapp.rpc.connector.entryHandler.OnExit();
   //   };
   //   process.on('SIGINT',func_beforeexit);
   //   process.on('SIGTERM',func_beforeexit);
-  app.beforeStopHook(function() {
-    console.log("\nServer Will Exit!!!");
+  myapp.beforeStopHook(function() {
+    console.log("Server Will Exit!!!",myapp.getServerType(),myapp.getCurServer());
     // do somethin when server exit...
     var myredis = require("redis"),
     myrediscli = myredis.createClient();
@@ -47,28 +51,31 @@ function startmain(){
     myrediscli.quit();
   });
   
-  // 显示异常。。。
-  process.on('uncaughtException', function(err) {
-    console.error(' Caught exception: ' + err.stack);
-  });
+  
+  
+  // clear old redis data....
+  if(myapp.getServerType() == "master"){
+    var myredis = require("redis"),
+    myrediscli = myredis.createClient();
+    myrediscli.flushdb( function (err, succeeded) {
+      console.log("redis flushdb result:",typeof(succeeded),succeeded); // will be true if successfull
+      myrediscli.quit();
+
+      
+      
+      
+    });
+  }
+    
+  
+
+  
+  
   
   // start app
-  console.log("server is run !!!");
-  app.start();
-}
-
-function myentry(){  
-  // clear old redis data....
-  var myredis = require("redis"),
-  myrediscli = myredis.createClient();
-  myrediscli.flushdb( function (err, succeeded) {
-    
-    console.log("redis flushdb result:",typeof(succeeded),succeeded); // will be true if successfull
-    myrediscli.quit();
-
-    startmain();
-
-  });
+  console.log("server is run ->",myapp.getServerType());
+  myapp.start();
+  
 }
 
 
@@ -78,7 +85,7 @@ function myentry(){
 
 //->>>>>>>>>>>
 
-myentry();
+startmain();
 
 
 

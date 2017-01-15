@@ -2,10 +2,11 @@ var AWS = require('aws-sdk');
 var myrequest = require('request');
 var myredis = require("redis");
 var myBabyParse = require("babyparse");
+var myScheduler = require("pomelo-scheduler");
 
 var myrediscl = myredis.createClient();
 myrediscl.on("connect", function () {
-    console.log("redis client connect start ");
+    console.log("redis client connect start ");		
 });
 myrediscl.on("error", function (err) {
     console.log("redis client Error " + err);
@@ -670,11 +671,23 @@ function mycache_GetExtDataByPoiTypeText(typetext, funcCallback, pCallOwner) {
 // end warp self cache function ...........................................................
 
 
-
+var MainLoop = function(data){
+	console.log("myScheduler run",data.name,Date.now());
+};
 
 
 var Handler = function(app) {
   this.app = app;
+	
+	console.log("app start!");
+	myScheduler.scheduleJob({
+		start: Date.now()+2000,
+		period: 1000
+	}, function(data) {
+		MainLoop(data);
+	}, {
+		name: 'mainloop'
+	});
 };
 
 module.exports = function(app) { 
