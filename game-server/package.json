@@ -10,7 +10,8 @@
 				"mysql": ">=2.0",
 	"babyparse":">=0.4.6",
 			"async":">=2.1.4",
-			"pomelo-scheduler":">=0.5.0"
+			"pomelo-scheduler":">=0.5.0",
+            "crc": "0.2.0"
     }
 }
 

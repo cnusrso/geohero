@@ -4,23 +4,38 @@ var myapp = null;
 
 
 function startmain(){
+
   var pomelo = require('pomelo');
+  var myrouteUtil = require('./app/utils/routeUtil');
   /**
    * Init app for client.
    */
   myapp = pomelo.createApp();
-  myapp.set('name', 'geohero_amap');
+  myapp.set('name', 'geohero_'+myapp.getServerId());
 
-  // app configuration
-  myapp.configure('production|development', 'connector', function(){
-    myapp.set('connectorConfig',
-      {
-        connector : pomelo.connectors.hybridconnector,
-        heartbeat : 3,
-        useDict : true,
-        useProtobuf : true
-      });
+  console.log("server begin start ->",myapp.getServerId());
+
+  myapp.set('connectorConfig',
+  {
+    connector : pomelo.connectors.hybridconnector,
+    heartbeat : 3,
+    useDict : true,
+    useProtobuf : true
   });
+  
+  // app configuration connector server
+  myapp.configure('production|development', 'connector', function(){
+    
+  });
+
+  // config game server
+  myapp.configure('production|development', 'game', function(){
+    
+  });
+
+  // set route gameserver config
+  myapp.route('game', myrouteUtil.game);
+
   
   // 显示异常。。。
   process.on('uncaughtException', function(err) {
@@ -43,12 +58,15 @@ function startmain(){
   //   process.on('SIGINT',func_beforeexit);
   //   process.on('SIGTERM',func_beforeexit);
   myapp.beforeStopHook(function() {
-    console.log("Server Will Exit!!!",myapp.getServerType(),myapp.getCurServer());
+    console.log("Server Will Exit!!!",myapp.getServerId());
     // do somethin when server exit...
-    var myredis = require("redis"),
-    myrediscli = myredis.createClient();
-    myrediscli.set('exit_time',(new Date()).toString());
-    myrediscli.quit();
+    if(myapp.getServerType() == "connector"){
+      var myredis = require("redis"),
+      myrediscli = myredis.createClient();
+      myrediscli.set('exit_time',(new Date()).toString());
+      myrediscli.quit();
+    }
+    
   });
   
   
@@ -73,7 +91,7 @@ function startmain(){
   
   
   // start app
-  console.log("server is run ->",myapp.getServerType());
+  console.log("server will start ->",myapp.getServerId());
   myapp.start();
   
 }

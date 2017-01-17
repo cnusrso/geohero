@@ -55,19 +55,28 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
   },
   
   DoNetworkMsg:function(szType,pData){
-    _gdata.model_notify.showNotify("Net Error", szType);
+    
     console.log("NetworkMsg:->",szType,pData);
     
     if(szType == "io-error"){
       _gdata.model_util.BlockMsgHide();
+      _gdata.model_notify.showNotify("Net Error", szType);
     } else if(szType == "close"){
       _gdata.model_util.BlockMsgHide();
+      _gdata.model_notify.showNotify("Net Error", szType);
     } else if(szType == "heartbeat timeout"){
       _gdata.model_util.BlockMsgHide();
+      _gdata.model_notify.showNotify("Net Error", szType);
     } else if(szType == "error"){
       _gdata.model_util.BlockMsgHide();
+      _gdata.model_notify.showNotify("Net Error", szType);
     } else if(szType == "onKick"){
       _gdata.model_util.BlockMsgHide();
+      // do kick
+    } else if(szType == "pushmsg"){
+      _gdata.model_notify.showNotify("pushmsg", pData.msg);
+
+
     } else {
       
     }

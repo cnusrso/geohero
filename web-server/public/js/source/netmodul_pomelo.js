@@ -50,6 +50,11 @@ define(['md5'], {
 				}
 		});
 		
+		window.pomelo.on("pushmsg",function(data){
+			if(singleton.pFuncSystemCallback != null){
+				singleton.pFuncSystemCallback.call(singleton,"pushmsg",data);
+			}
+		});
 // 		if (this.bNetConnectOk == false) {
 // 			this.connectNet(function(nValue) {
 // 				if (nValue == 1) {

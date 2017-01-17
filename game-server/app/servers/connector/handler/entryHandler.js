@@ -670,27 +670,50 @@ function mycache_GetExtDataByPoiTypeText(typetext, funcCallback, pCallOwner) {
 }
 // end warp self cache function ...........................................................
 
-
+var _Gapp = null;
 var MainLoop = function(data){
 	console.log("myScheduler run",data.name,Date.now());
+
+	var pUserName = "test2";
+	var sessionService = _Gapp.get('sessionService');
+	var oldSession = sessionService.getByUid(pUserName);
+	if(oldSession){
+		// _Gapp.get('channelService').pushMessageByUids('pushmsg',{msg:"mainloop"},[{uid:pUserName,sid:"connector-server-1"}],function(err){
+	 //       if(err){
+	 //           console.log(err);
+	 //           return;
+	 //       }
+	 //    });
+	 console.log("myScheduler run",data.name);
+	}
+	
 };
 
 
 var Handler = function(app) {
   this.app = app;
 	
-	console.log("app start!");
-	myScheduler.scheduleJob({
-		start: Date.now()+2000,
-		period: 1000
-	}, function(data) {
-		MainLoop(data);
-	}, {
-		name: 'mainloop'
-	});
+	if(_Gapp != null){
+		_Gapp = app;
+	}
+	// if(app.getServerType() == "connector"){
+	// 	console.log("connector app start!");
+	// 	myScheduler.scheduleJob({
+	// 		start: Date.now()+2000,
+	// 		period: 3000
+	// 	}, function(data) {
+	// 		MainLoop(app,data);
+	// 	}, {
+	// 		name: 'mainloop'
+	// 	});
+	// }else{
+	// 	if(app.getServerType() == "master"){
+	// 		console.log("master app start!");
+	// 	}
+	// }
 };
 
-module.exports = function(app) { 
+module.exports = function(app) {
   return new Handler(app);
 };
 
@@ -702,7 +725,6 @@ var onUserLeave = function (username, session) {
 };
 
 Handler.prototype.OnExit = function(){
-	console.log("entryhandler receive exit!!!");
 	myrediscl.set('exit_time',myfun_getDateTimeStr());
 };
 
@@ -761,6 +783,7 @@ Handler.prototype.check_Register = function(msg,session,next) {
 					if (pResult.status == 1) {
 						// regist ok
 						session.bind(msg.username);
+						session.set('acckey',szAccKey);
 						session.on('closed', onUserLeave.bind(null, msg.username));
 						session.pushAll();
 						
@@ -838,13 +861,9 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 				if (!!oldSession) {
 					sessionService.kick(msg.username, "other login", function() {
 						session.bind(msg.username);
-						session.on('closed', onUserLeave.bind(null, msg.username));
-						session.pushAll();
 					});
 				} else {
 					session.bind(msg.username);
-					session.on('closed', onUserLeave.bind(null, msg.username));
-					session.pushAll();
 				}
 				
 				// check password ok,then update acckey
@@ -859,6 +878,11 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 					if(nResult == 1){
 						var pResult = JSON.parse(sData);
 						if(pResult.status == 1)	{
+
+							session.set('acckey',szAccKey);
+							session.on('closed', onUserLeave.bind(null, msg.username));
+							session.pushAll();
+
 							// update key ok, response client
 							next(null, {
 								code: 200,
