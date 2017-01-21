@@ -1088,7 +1088,11 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
               
             case "move":
               {
-                
+                var acckey = _gdata.model_userdata.userdata.acckey;
+                var username = _gdata.model_userdata.userdata.account;
+                _gdata.model_netmgr.req_testGameMsg(acckey, username, function(pData){
+                  console.log("testMsg:->",pData);
+                }, singleton);
               }break;
           }
         

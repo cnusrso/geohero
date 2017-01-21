@@ -58,7 +58,16 @@ define(['jquery','jqueryui','pnotify','md5','blockui'],{
 
           _gdata.model_util.BlockMsgShow("In Sigin...");
           
-          _gdata.model_netmgr.req_check_SignIn(sUserInputAccount,sUserInputpwd,"web",singleton.onSignInResult,singleton);
+          _gdata.model_netmgr.queryConnectorConfig(sUserInputAccount,function(sCmd,nCode){
+            if(sCmd == "queryConnector"){
+              if(nCode != 1){
+                _gdata.model_notify.showNotify("Error", "queryConnectorConfig Error Code:"+nCode);
+                return;
+              }
+              _gdata.model_netmgr.req_check_SignIn(sUserInputAccount,sUserInputpwd,"web",singleton.onSignInResult,singleton);
+            }
+          },singleton);
+          
         }
       }, {
         text: "SignUp",
@@ -123,7 +132,16 @@ define(['jquery','jqueryui','pnotify','md5','blockui'],{
 
           _gdata.model_util.BlockMsgShow("In SignUp...");
           
-          _gdata.model_netmgr.req_check_Register(sUserInputAccount,sUserInputpwd,"web",singleton.onRegisterResult,singleton);
+          _gdata.model_netmgr.queryConnectorConfig(sUserInputAccount,function(sCmd,nCode){
+            if(sCmd == "queryConnector"){
+              if(nCode != 1){
+                _gdata.model_notify.showNotify("Error", "queryConnectorConfig Error Code:"+nCode);
+                return;
+              }
+              _gdata.model_netmgr.req_check_Register(sUserInputAccount,sUserInputpwd,"web",singleton.onRegisterResult,singleton);
+            }
+          },singleton);
+
         }
       }, {
         text: "SignIn",

@@ -13,28 +13,34 @@ function startmain(){
   myapp = pomelo.createApp();
   myapp.set('name', 'geohero_'+myapp.getServerId());
 
-  console.log("server begin start ->",myapp.getServerId());
+  console.info("server begin start ->",myapp.getServerId());
 
-  myapp.set('connectorConfig',
-  {
-    connector : pomelo.connectors.hybridconnector,
-    heartbeat : 3,
-    useDict : true,
-    useProtobuf : true
+  myapp.configure('production|development', 'gate', function(){
+    myapp.set('connectorConfig',
+      {
+        connector : pomelo.connectors.hybridconnector,
+      });
   });
-  
-  // app configuration connector server
+
+  // config server
   myapp.configure('production|development', 'connector', function(){
-    
+    myapp.set('connectorConfig',
+    {
+      connector : pomelo.connectors.hybridconnector,
+      heartbeat : 3,
+      useDict : true,
+      useProtobuf : true
+    });
+    // set route gameserver config
+    myapp.route('game', myrouteUtil.game);
   });
 
-  // config game server
   myapp.configure('production|development', 'game', function(){
-    
+    myapp.set('connectorConfig',
+      {
+        connector : pomelo.connectors.hybridconnector,
+      });
   });
-
-  // set route gameserver config
-  myapp.route('game', myrouteUtil.game);
 
   
   // 显示异常。。。
@@ -44,9 +50,9 @@ function startmain(){
   //处理退出的事件。。。
   //   var func_beforeexit = function(){
   //     var nDelaySecond = 5;
-  //     console.log("\nServer Will Exit After ",nDelaySecond," s");
+  //     console.info("\nServer Will Exit After ",nDelaySecond," s");
   //     setInterval(function(){
-  //       console.log("\nServer Will Exit After ",--nDelayTime," s");
+  //       console.info("\nServer Will Exit After ",--nDelayTime," s");
   //     },1000);
   //     setTimeout(function(){
   //         process.exit(1);
@@ -58,12 +64,13 @@ function startmain(){
   //   process.on('SIGINT',func_beforeexit);
   //   process.on('SIGTERM',func_beforeexit);
   myapp.beforeStopHook(function() {
-    console.log("Server Will Exit!!!",myapp.getServerId());
+    console.info("Server Will Exit!!!",myapp.getServerId());
     // do somethin when server exit...
-    if(myapp.getServerType() == "connector"){
+
+    if(myapp.getServerType() == "master"){
       var myredis = require("redis"),
       myrediscli = myredis.createClient();
-      myrediscli.set('exit_time',(new Date()).toString());
+      myrediscli.set('master_exit_time',(new Date()).toString());
       myrediscli.quit();
     }
     
@@ -76,7 +83,7 @@ function startmain(){
     var myredis = require("redis"),
     myrediscli = myredis.createClient();
     myrediscli.flushdb( function (err, succeeded) {
-      console.log("redis flushdb result:",typeof(succeeded),succeeded); // will be true if successfull
+      console.info("redis flushdb result:",typeof(succeeded),succeeded); // will be true if successfull
       myrediscli.quit();
 
       
@@ -91,7 +98,7 @@ function startmain(){
   
   
   // start app
-  console.log("server will start ->",myapp.getServerId());
+  console.info("server will start ->",myapp.getServerId());
   myapp.start();
   
 }

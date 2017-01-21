@@ -783,6 +783,7 @@ Handler.prototype.check_Register = function(msg,session,next) {
 					if (pResult.status == 1) {
 						// regist ok
 						session.bind(msg.username);
+						session.set('uid',msg.username);
 						session.set('acckey',szAccKey);
 						session.on('closed', onUserLeave.bind(null, msg.username));
 						session.pushAll();
@@ -860,10 +861,10 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 				// 	console.log("oldSessionoldSessionoldSession",oldSession)
 				if (!!oldSession) {
 					sessionService.kick(msg.username, "other login", function() {
-						session.bind(msg.username);
+						// delay call...
 					});
 				} else {
-					session.bind(msg.username);
+					
 				}
 				
 				// check password ok,then update acckey
@@ -878,7 +879,8 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 					if(nResult == 1){
 						var pResult = JSON.parse(sData);
 						if(pResult.status == 1)	{
-
+							session.bind(msg.username);
+							session.set('uid',msg.username);
 							session.set('acckey',szAccKey);
 							session.on('closed', onUserLeave.bind(null, msg.username));
 							session.pushAll();

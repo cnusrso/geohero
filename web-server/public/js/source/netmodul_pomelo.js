@@ -71,14 +71,59 @@ define(['md5'], {
 		this.pFuncSystemCallback = _pFuncSystemCallback;
 	},
 	
+	
+	queryConnectorConfig: function(userName,funcCallback,pCallOwner){
+		if(_gdata.model_datacfg.ConnectorConfig.updatetime > 0){
+			//
+			if(pCallOwner != null)
+				funcCallback.call(pCallOwner,"queryConnector",1);
+			else
+				funcCallback.call("queryConnector",1);
+			return;
+		}
+
+		window.pomelo.init({
+			host: _gdata.model_datacfg.GateConfig.host,
+			port: _gdata.model_datacfg.GateConfig.port,
+			log: true
+		}, function() {
+			console.info("Pomelo connect Gate Ok!");
+			
+			window.pomelo.request('gate.gateHandler.queryConnector', {
+				uid: userName
+			}, function(data) {
+				window.pomelo.disconnect();
+				if(data.code !== 200) {
+					if(pCallOwner != null)
+						funcCallback.call(pCallOwner,"queryConnector",data.code);
+					else
+						funcCallback.call("queryConnector",data.code);
+					return;
+				}
+
+				_gdata.model_datacfg.ConnectorConfig.host = data.host;
+				_gdata.model_datacfg.ConnectorConfig.port = data.port;
+				_gdata.model_datacfg.ConnectorConfig.updatetime = new Date().getTime();
+
+				console.info("Query Connector Info Ok!",data.host,data.port);
+
+				if(pCallOwner != null)
+					funcCallback.call(pCallOwner,"queryConnector",1);
+				else
+					funcCallback.call("queryConnector",1);
+			});
+
+		});
+	},
+
 	connectNet: function(funcCallback,pCallOwner){
 		if(pCallOwner == null)
 			{
 				pCallOwner = this;
 			}
 		window.pomelo.init({
-			host: _gdata.model_datacfg.ServerConfig.ip,
-			port: _gdata.model_datacfg.ServerConfig.port,
+			host: _gdata.model_datacfg.ConnectorConfig.host,
+			port: _gdata.model_datacfg.ConnectorConfig.port,
 			log: true
 		}, function() {
 			console.log("Pomelo Init Ok!",new Date().getTime());
@@ -352,4 +397,25 @@ define(['md5'], {
 		},this);
 	},
 	
+	req_testGameMsg: function(acckey, username, funcCallback, pCallOwner){
+		this.checkConnect(function(szState){
+			if(szState == "reconnect")
+				{
+					this.req_testGameMsg(acckey, username, funcCallback, pCallOwner);
+				}
+			else if(szState == "connect")
+				{
+					var pMsg = {};
+					pMsg.acckey = acckey;
+					pMsg.username = username;
+
+
+					window.pomelo.request("game.gameHandler.testMsg", pMsg, function(data) {
+
+						funcCallback.call(pCallOwner, data);
+
+					});
+				}
+		},this);
+	},
 });
