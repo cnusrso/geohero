@@ -78,7 +78,7 @@ function loadFun() {
 				console.log("3 load amap ok", new Date().getTime()-_gStartTime);
 				_gdata.model_map = _mymap;
 				_gdata.model_map.init('container');
-				
+
 				// hide loading img..
 				var ploadingpage = document.getElementById("loadingpage");
 				ploadingpage.parentNode.removeChild(ploadingpage);
@@ -111,9 +111,6 @@ function loadFun() {
 						_gdata.procedure_main = _proce_main;
 						_gdata.procedure_main.init();
 
-
-						
-						
 						
 
 						entryFun();

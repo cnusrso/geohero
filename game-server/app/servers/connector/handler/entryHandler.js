@@ -670,47 +670,11 @@ function mycache_GetExtDataByPoiTypeText(typetext, funcCallback, pCallOwner) {
 }
 // end warp self cache function ...........................................................
 
-var _Gapp = null;
-var MainLoop = function(data){
-	console.log("myScheduler run",data.name,Date.now());
-
-	var pUserName = "test2";
-	var sessionService = _Gapp.get('sessionService');
-	var oldSession = sessionService.getByUid(pUserName);
-	if(oldSession){
-		// _Gapp.get('channelService').pushMessageByUids('pushmsg',{msg:"mainloop"},[{uid:pUserName,sid:"connector-server-1"}],function(err){
-	 //       if(err){
-	 //           console.log(err);
-	 //           return;
-	 //       }
-	 //    });
-	 console.log("myScheduler run",data.name);
-	}
-	
-};
-
 
 var Handler = function(app) {
   this.app = app;
-	
-	if(_Gapp != null){
-		_Gapp = app;
-	}
-	// if(app.getServerType() == "connector"){
-	// 	console.log("connector app start!");
-	// 	myScheduler.scheduleJob({
-	// 		start: Date.now()+2000,
-	// 		period: 3000
-	// 	}, function(data) {
-	// 		MainLoop(app,data);
-	// 	}, {
-	// 		name: 'mainloop'
-	// 	});
-	// }else{
-	// 	if(app.getServerType() == "master"){
-	// 		console.log("master app start!");
-	// 	}
-	// }
+
+
 };
 
 module.exports = function(app) {
@@ -754,6 +718,8 @@ Handler.prototype.check_Register = function(msg,session,next) {
 		next(null, {code: 202, account: msg.username, msg: 'Not Defined Password'});
 		return;
 	}
+	var self = this;
+
 	// first check has user name...
 	mycache_GetUserData(msg.username,function(szResult,pUserData){
 		if (szResult == "success") {
@@ -784,6 +750,7 @@ Handler.prototype.check_Register = function(msg,session,next) {
 						// regist ok
 						session.bind(msg.username);
 						session.set('uid',msg.username);
+						// session.set('connectorid',self.app.getServerId());
 						session.set('acckey',szAccKey);
 						session.on('closed', onUserLeave.bind(null, msg.username));
 						session.pushAll();
@@ -881,6 +848,7 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 						if(pResult.status == 1)	{
 							session.bind(msg.username);
 							session.set('uid',msg.username);
+							// session.set('connectorid',self.app.getServerId());
 							session.set('acckey',szAccKey);
 							session.on('closed', onUserLeave.bind(null, msg.username));
 							session.pushAll();
@@ -894,6 +862,11 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 							// update redis data
 							pUserData.datas[0].loginkey = pInsertData.loginkey;
 							mycache_SetUserData(msg.username,JSON.stringify(pUserData));
+
+							// self.app.rpc.game.gameRemote.testMsg(session, msg.username, szAccKey, function(pdata){
+							// 	console.log("pdatapdatapdata",pdata);
+							// });	
+
 						}	else {
 							next(null, {
 								code: 205,

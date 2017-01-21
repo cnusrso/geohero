@@ -21,5 +21,16 @@ handler.testMsg = function(msg, session, next) {
 		return;
 	}
 	
+	var sessionService = this.app.get('backendSessionService');
+
+	var frontServerId = session.frontendId;
+	var userid = session.uid;
+	sessionService.getByUid(frontServerId,userid,function(err, BackendSessions){
+		console.log('session',session);
+		console.log('BackendSessions',BackendSessions);
+		
+	});
+	
+
 	next(null, {code: 200, msg: 'testMsg Ok:->'+msg.username+'->'+this.app.getServerId()});
 };

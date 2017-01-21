@@ -22,24 +22,35 @@ function startmain(){
       });
   });
 
-  // config server
+  // config connect server
   myapp.configure('production|development', 'connector', function(){
-    myapp.set('connectorConfig',
-    {
+    myapp.set('connectorConfig',{
       connector : pomelo.connectors.hybridconnector,
       heartbeat : 3,
       useDict : true,
       useProtobuf : true
     });
+
     // set route gameserver config
     myapp.route('game', myrouteUtil.game);
+
+    myapp.set('_rediscl',require('./app/utils/redisfunc')(myapp));
+    myapp.set('_commonutil',require('./app/utils/commonUtil'));
   });
 
+  // config game server...
   myapp.configure('production|development', 'game', function(){
-    myapp.set('connectorConfig',
-      {
-        connector : pomelo.connectors.hybridconnector,
-      });
+    myapp.set('connectorConfig',{
+      connector : pomelo.connectors.hybridconnector,
+    });
+
+
+    myapp.set('_rediscl',require('./app/utils/redisfunc')(myapp));
+    myapp.set('_commonutil',require('./app/utils/commonUtil'));
+
+    require('./app/utils/tableUtil');
+    // var pwd = myapp.get('_commonutil').buildEndPassword("abc","123");
+    // console.log("pppppppppppppppp",pwd);
   });
 
   
