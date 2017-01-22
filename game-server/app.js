@@ -34,7 +34,7 @@ function startmain(){
     // set route gameserver config
     myapp.route('game', myrouteUtil.game);
 
-    myapp.set('_rediscl',require('./app/utils/redisfunc')(myapp));
+    myapp.set('_rediscl',require('./app/utils/redisHandler')(myapp));
     myapp.set('_commonutil',require('./app/utils/commonUtil'));
   });
 
@@ -45,10 +45,10 @@ function startmain(){
     });
 
 
-    myapp.set('_rediscl',require('./app/utils/redisfunc')(myapp));
+    myapp.set('_rediscl',require('./app/utils/redisHandler')(myapp));
     myapp.set('_commonutil',require('./app/utils/commonUtil'));
 
-    require('./app/utils/tableUtil');
+    myapp.set('_tableUtil',require('./app/utils/tableUtil'));
     // var pwd = myapp.get('_commonutil').buildEndPassword("abc","123");
     // console.log("pppppppppppppppp",pwd);
   });

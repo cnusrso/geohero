@@ -42,7 +42,7 @@ tableUtil.pTables = {
 if(1)
 {
     Object.keys(tableUtil.pTables).forEach(function(key) {
-        console.log("keysssssssssss",key,typeof(key));
+        console.log("init table:->",key);
         tableUtil.pTables[key].init();
     });
 
