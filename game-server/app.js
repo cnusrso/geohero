@@ -36,6 +36,8 @@ function startmain(){
 
     myapp.set('_rediscl',require('./app/utils/redisHandler')(myapp));
     myapp.set('_commonutil',require('./app/utils/commonUtil'));
+    myapp.set('_tableUtil',require('./app/utils/tableUtil'));
+    myapp.set('_databaseUtil',require('./app/utils/databaseOp')());
   });
 
   // config game server...
@@ -47,8 +49,8 @@ function startmain(){
 
     myapp.set('_rediscl',require('./app/utils/redisHandler')(myapp));
     myapp.set('_commonutil',require('./app/utils/commonUtil'));
-
     myapp.set('_tableUtil',require('./app/utils/tableUtil'));
+    myapp.set('_databaseUtil',require('./app/utils/databaseOp')());
     // var pwd = myapp.get('_commonutil').buildEndPassword("abc","123");
     // console.log("pppppppppppppppp",pwd);
   });
@@ -77,13 +79,16 @@ function startmain(){
   myapp.beforeStopHook(function() {
     console.info("Server Will Exit!!!",myapp.getServerId());
     // do somethin when server exit...
+    // if(myapp.getServerType() == "connector"){
+    //   console.log("myapp.rpc:->",myapp.rpc);
+    // }
 
-    if(myapp.getServerType() == "master"){
-      var myredis = require("redis"),
-      myrediscli = myredis.createClient();
-      myrediscli.set('master_exit_time',(new Date()).toString());
-      myrediscli.quit();
-    }
+    // if(myapp.getServerType() == "master"){
+    //   var myredis = require("redis"),
+    //   myrediscli = myredis.createClient();
+    //   myrediscli.set('master_exit_time',(new Date()).toString());
+    //   myrediscli.quit();
+    // }
     
   });
   

@@ -26,9 +26,8 @@ handler.testMsg = function(msg, session, next) {
 	var frontServerId = session.frontendId;
 	var userid = session.uid;
 	sessionService.getByUid(frontServerId,userid,function(err, BackendSessions){
-		console.log('session',session);
-		console.log('BackendSessions',BackendSessions);
-		
+		// console.log('session',session);
+		// console.log('BackendSessions',BackendSessions);		
 	});
 	
 

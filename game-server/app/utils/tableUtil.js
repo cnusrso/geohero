@@ -69,8 +69,8 @@ tableUtil.getLineValue = function(pLineData,pTableIndex,sIndexName){
 tableUtil.getBaseIndexByTypeText = function(sType){
     var pData = tableUtil.pTables.t_baseinfo;
     var typetext_id = pData.map.get("typetext");
-    for (var j=0;j<pData.data.length;j++){
-        var element = pData.data[j];
+    for (var j=0;j<pData.table.data.length;j++){
+        var element = pData.table.data[j];
         if(element[typetext_id] == sType){
             var index_id = pData.map.get("index");
             return parseInt(element[index_id]);
@@ -96,8 +96,8 @@ tableUtil.getBaseCostByIndex = function(nIndex){
 tableUtil.getMonsterNameById = function(nId){
     var pData = tableUtil.pTables.t_monster;
     var index_id = pData.map.get("index");
-    for (var j=0;j<pData.data.length;j++){
-        var element = pData.data[i];
+    for (var j=0;j<pData.table.data.length;j++){
+        var element = pData.table.data[i];
         if(element[index_id] == nId){
             var name_id = pData.map.get("name");
             return element[name_id];
@@ -109,8 +109,8 @@ tableUtil.getMonsterNameById = function(nId){
 tableUtil.getMaybeMonsterNamesByBaseIndex = function(nIndex){
     var pBaseinfoData = tableUtil.pTables.t_baseinfo;
     var index_id = pBaseinfoData.map.get("index");
-    for (var i=0;i<pBaseinfoData.data.length;i++){
-        var element = pBaseinfoData.data[i];
+    for (var i=0;i<pBaseinfoData.table.data.length;i++){
+        var element = pBaseinfoData.table.data[i];
         var nCurIndex = parseInt(element[index_id]);
         if(nCurIndex == nIndex){
             var monsterids_id = pBaseinfoData.map.get("monsterids");
@@ -122,9 +122,9 @@ tableUtil.getMaybeMonsterNamesByBaseIndex = function(nIndex){
             var mindex_id = pMonsterData.map.get("index");
             var mname_id = pMonsterData.map.get("name");
             pMonsterIds.forEach(function(mm){
-                for (var j=0;j<pMonsterData.data.length;j++){
-                    if(pMonsterData.data[j][mindex_id] == mm){
-                        pMonsterNames.push(pMonsterData.data[j][mname_id]);
+                for (var j=0;j<pMonsterData.table.data.length;j++){
+                    if(pMonsterData.table.data[j][mindex_id] == mm){
+                        pMonsterNames.push(pMonsterData.table.data[j][mname_id]);
                         break;
                     }
                 }
@@ -142,8 +142,8 @@ tableUtil.randomOneMonsterByBaseIndex = function(nIndex){
     var monsterids_id = pBaseinfoData.map.get("monsterids");
     var mindex_id = pMonsterData.map.get("index");
     
-    for (var i=0;i<pBaseinfoData.data.length;i++){
-        var element = pBaseinfoData.data[i];
+    for (var i=0;i<pBaseinfoData.table.data.length;i++){
+        var element = pBaseinfoData.table.data[i];
         var nCurIndex = parseInt(element[index_id]);
         if(nCurIndex == nIndex){
             var strMonsterids = element[monsterids_id];
@@ -151,14 +151,14 @@ tableUtil.randomOneMonsterByBaseIndex = function(nIndex){
             
             var nRandomIndex = Math.floor(Math.random() * pMonsterIds.length);          
             var nRandomMonsterIndex = pMonsterIds[nRandomIndex];
-            for (var j=0;j<pMonsterData.data.length;j++){
-                if(pMonsterData.data[j][mindex_id] == nRandomMonsterIndex){   
+            for (var j=0;j<pMonsterData.table.data.length;j++){
+                if(pMonsterData.table.data[j][mindex_id] == nRandomMonsterIndex){   
                     return {
                         id:nRandomMonsterIndex,
-                        name:pMonsterData.data[j][t_monster.get("name")],
-                        hp:pMonsterData.data[j][t_monster.get("hp")],
-                        award:pMonsterData.data[j][t_monster.get("award")],
-                        icon:pMonsterData.data[j][t_monster.get("icon")]
+                        name:pMonsterData.table.data[j][t_monster.get("name")],
+                        hp:pMonsterData.table.data[j][t_monster.get("hp")],
+                        award:pMonsterData.table.data[j][t_monster.get("award")],
+                        icon:pMonsterData.table.data[j][t_monster.get("icon")]
                     };
                 }
             }

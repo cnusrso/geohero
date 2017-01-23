@@ -36,12 +36,12 @@ var handler = Handler.prototype;
 handler.setDataByKey = function(szKey,sData){
 	this.myrediscl.set(szKey,sData);
 };
-handler.getDataByKey = function(szKey,funcCallback,pCallOwner) {
+handler.getDataByKey = function(szKey,pExtData,funcCallback,pCallOwner) {
 	this.myrediscl.get(szKey, function(err, reply) {
 		if (pCallOwner != null && funcCallback != null) {
-			funcCallback.call(pCallOwner, err, reply);
+			funcCallback.call(pCallOwner, err, reply, pExtData);
 		} else if (funcCallback != null) {
-			funcCallback(err, reply);
+			funcCallback(err, reply, pExtData);
 		}
 	});
 }
