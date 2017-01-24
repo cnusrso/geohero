@@ -151,6 +151,7 @@ Handler.prototype.OnExit = function(){
 	console.log("begin exit!!!!!!!!!!!!",this.app.getServerId());
 };
 
+// check battle status...
 Handler.prototype.loopfunc_updateBattle = function(data){
 	console.log("loopfunc_updateBattle :",data.owner.app.getServerId(),data.owner.pScheduleUserIds);
 
@@ -174,8 +175,22 @@ Handler.prototype.loopfunc_updateBattle = function(data){
 							return;
 						}
 						var oneBattleData = JSON.parse(sData);
-						var nLastTime = (new Date()).getTime() - oneBattleData.begintime;
-						console.log("update battle:->",nLastTime,oneBattleData.sourceids,oneBattleData.targetid);
+						var nLastTime = Math.floor(((new Date()).getTime() - oneBattleData.begintime)/1000);
+
+						var nAllTime = [];//each source position to dest pos data...
+						for(var d = 0; d < oneBattleData.distance.length; ++ d){
+							nAllTime[d] = 0;
+							oneBattleData.distance[d].route.paths[0].steps.forEach(function(onestep){
+								nAllTime[d] += parseInt(onestep.duration);
+							});
+						}
+						for(var d = 0; d < nAllTime.length; ++ d){
+							if(nAllTime[d] <= nLastTime){
+								console.log("battle reached!!!",oneBattleData.sourceids,oneBattleData.targetid);
+							}else{								
+								console.log("battle in process!!!",parseInt(Math.floor(nLastTime*100/nAllTime[d]))+"%",oneBattleData.sourceids,oneBattleData.targetid);
+							}
+						}
 					});
 				}
 			}
