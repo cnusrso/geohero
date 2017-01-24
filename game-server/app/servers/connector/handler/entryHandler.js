@@ -34,6 +34,10 @@ Handler.prototype.onUserLeave = function (thisObj, username, session) {
 	console.log("user leave",session.uid);
 
 	thisObj.rediscl.delDataByKey(username);
+
+	// thisObj.app.rpc.game.gameRemote.testMsg(session,username,"abc",function(){
+	// 	console.log("game remote callback!!!");
+	// });
   }
 };
 

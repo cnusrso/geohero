@@ -7,9 +7,7 @@ module.exports = function() {
 var Handler = function() {
 	this.myrequest = require('request');
 	this.commonutil = require(process.cwd()+'/app/utils/commonUtil');
-
-	this.sGaodeWebServiceKey = '957606db3c3518da4a5dda76d1641008';
-	this.sYunTuPrivateKey = 'b6e5a1d7de8220063267663c21e6e171';
+	this.dataDef = require(process.cwd()+'/app/utils/dataDefine');
 	
 };
 var handler = Handler.prototype;
@@ -17,8 +15,8 @@ var handler = Handler.prototype;
 
 handler.gaodeweb_GetDistanceData = function(pSourcePoints,pTargetPoint,funcCallback,pCallOwner){
 	var sHttpGetHead = "http://restapi.amap.com/v3/distance?";
-	var sSig = this.commonutil.crypto("destination="+pTargetPoint+"&key="+this.sGaodeWebServiceKey+"&origins="+pSourcePoints+this.sYunTuPrivateKey);
-	var sFullURL = sHttpGetHead+"origins="+pSourcePoints+"&destination="+pTargetPoint+"&key="+this.sGaodeWebServiceKey+"&sig="+sSig;
+	var sSig = this.commonutil.crypto("destination="+pTargetPoint+"&key="+this.dataDef.sGaodeWebServiceKey+"&origins="+pSourcePoints+this.dataDef.sGaodePrivateKey);
+	var sFullURL = sHttpGetHead+"origins="+pSourcePoints+"&destination="+pTargetPoint+"&key="+this.dataDef.sGaodeWebServiceKey+"&sig="+sSig;
 	this.myrequest(sFullURL, function(error, response, body) {
 		var nResult = 0;
 		if (!error && response.statusCode == 200) {
@@ -37,8 +35,8 @@ handler.gaodeweb_GetDistanceData = function(pSourcePoints,pTargetPoint,funcCallb
 
 handler.gaodeweb_GetDrivingData = function(pSourcePosition,pTargetPosition,pSourcePoi,pTargetPoi,funcCallback,pCallOwner,pCustomData){
 	var sHttpGetHead = "http://restapi.amap.com/v3/direction/driving?";
-	var sSig = this.commonutil.crypto("destination="+pTargetPosition+"&destinationid="+pTargetPoi+"&key="+this.sGaodeWebServiceKey+"&origin="+pSourcePosition+"&originid="+pSourcePoi+this.sYunTuPrivateKey);
-	var sFullURL = sHttpGetHead+"origin="+pSourcePosition+"&originid="+pSourcePoi+"&destination="+pTargetPosition+"&destinationid="+pTargetPoi+"&key="+this.sGaodeWebServiceKey+"&sig="+sSig;
+	var sSig = this.commonutil.crypto("destination="+pTargetPosition+"&destinationid="+pTargetPoi+"&key="+this.dataDef.sGaodeWebServiceKey+"&origin="+pSourcePosition+"&originid="+pSourcePoi+this.dataDef.sGaodePrivateKey);
+	var sFullURL = sHttpGetHead+"origin="+pSourcePosition+"&originid="+pSourcePoi+"&destination="+pTargetPosition+"&destinationid="+pTargetPoi+"&key="+this.dataDef.sGaodeWebServiceKey+"&sig="+sSig;
 	console.log("gaodeweb_GetDrivingData:->",sFullURL);
 	this.myrequest(sFullURL, function(error, response, body) {		
 		var nResult = 0;
@@ -59,8 +57,8 @@ handler.gaodeweb_GetDrivingData = function(pSourcePosition,pTargetPosition,pSour
 
 handler.gaodeweb_GetWalkingData = function(pSourcePosition,pTargetPosition,funcCallback,pCallOwner,pCustomData){
 	var sHttpGetHead = "http://restapi.amap.com/v3/direction/walking?";
-	var sSig = this.commonutil.crypto("destination="+pTargetPosition+"&key="+this.sGaodeWebServiceKey+"&origin="+pSourcePosition+this.sYunTuPrivateKey);
-	var sFullURL = sHttpGetHead+"origin="+pSourcePosition+"&destination="+pTargetPosition+"&key="+this.sGaodeWebServiceKey+"&sig="+sSig;
+	var sSig = this.commonutil.crypto("destination="+pTargetPosition+"&key="+this.dataDef.sGaodeWebServiceKey+"&origin="+pSourcePosition+this.dataDef.sGaodePrivateKey);
+	var sFullURL = sHttpGetHead+"origin="+pSourcePosition+"&destination="+pTargetPosition+"&key="+this.dataDef.sGaodeWebServiceKey+"&sig="+sSig;
 	console.log("gaodeweb_GetWalkingData:->",sFullURL);
 	this.myrequest(sFullURL, function(error, response, body) {		
 		var nResult = 0;

@@ -7,9 +7,7 @@ module.exports = function() {
 var Handler = function() {
 	this.myrequest = require('request');
 	this.commonutil = require(process.cwd()+'/app/utils/commonUtil');
-
-	this.sYunTuKey = '957606db3c3518da4a5dda76d1641008';
-	this.sYunTuPrivateKey = 'b6e5a1d7de8220063267663c21e6e171';
+	this.dataDef = require(process.cwd()+'/app/utils/dataDefine');
 
 
 	this.sTable_t_account 		= '57067e02305a2a034b260fa2';
@@ -21,8 +19,8 @@ var handler = Handler.prototype;
 
 handler.yuntu_GetDataByFilter = function(sTableId,szFilter,funcCallback,pCallOwner){
 	var sHttpGetHead = "http://yuntuapi.amap.com/datamanage/data/list?";
-	var sSig = this.commonutil.crypto("filter="+szFilter+"&key="+this.sYunTuKey+"&tableid="+sTableId+this.sYunTuPrivateKey);
-	var sFullURL = sHttpGetHead+"tableid="+sTableId+"&filter="+szFilter+"&key="+this.sYunTuKey+"&sig="+sSig;
+	var sSig = this.commonutil.crypto("filter="+szFilter+"&key="+this.dataDef.sGaodeWebServiceKey+"&tableid="+sTableId+this.dataDef.sGaodePrivateKey);
+	var sFullURL = sHttpGetHead+"tableid="+sTableId+"&filter="+szFilter+"&key="+this.dataDef.sGaodeWebServiceKey+"&sig="+sSig;
 	console.log("yuntu_GetDataByFilter:->",sFullURL);
 	this.myrequest(sFullURL, function(error, response, body) {
 		var nResult = 0;
@@ -43,12 +41,12 @@ handler.yuntu_GetDataByFilter = function(sTableId,szFilter,funcCallback,pCallOwn
 handler.yuntu_UpdateNewData = function(sTableId,szData,funcCallback,pCallOwner){
 	
 	var sHttpPostHead = "http://yuntuapi.amap.com/datamanage/data/update";
-	var sSig = this.commonutil.crypto("data="+szData+"&key="+this.sYunTuKey+"&loctype=1&tableid="+sTableId+this.sYunTuPrivateKey);
+	var sSig = this.commonutil.crypto("data="+szData+"&key="+this.dataDef.sGaodeWebServiceKey+"&loctype=1&tableid="+sTableId+this.dataDef.sGaodePrivateKey);
 	this.myrequest.post(
 		{
 			url:sHttpPostHead,
 			form:{
-				key:this.sYunTuKey,
+				key:this.dataDef.sGaodeWebServiceKey,
 				loctype:1,
 				tableid:sTableId,
 				data:szData,
@@ -76,13 +74,13 @@ handler.yuntu_UpdateNewData = function(sTableId,szData,funcCallback,pCallOwner){
 handler.yuntu_AddNewData = function(sTableId,szData,funcCallback,pCallOwner){
 	
 	var sHttpGetHead = 'http://yuntuapi.amap.com/datamanage/data/create';
-	var sSig = this.commonutil.crypto("data="+szData+"&key="+this.sYunTuKey+"&loctype=1&tableid="+sTableId+this.sYunTuPrivateKey);
+	var sSig = this.commonutil.crypto("data="+szData+"&key="+this.dataDef.sGaodeWebServiceKey+"&loctype=1&tableid="+sTableId+this.dataDef.sGaodePrivateKey);
 	// do regist
 	this.myrequest.post(
 		{
 			url:sHttpGetHead, 
 			form:{
-				key:this.sYunTuKey,
+				key:this.dataDef.sGaodeWebServiceKey,
 				loctype:1,
 				tableid:sTableId,
 				data:szData,
