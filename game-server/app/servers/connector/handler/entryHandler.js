@@ -23,37 +23,6 @@ var sTable_t_account 	= '57067e02305a2a034b260fa2';
 var sTable_t_poi			= '570680c6305a2a034b262400';
 
 
-function myfun_getDateTimeStr() {
-
-    var date = new Date();
-
-    var hour = date.getHours();
-    hour = (hour < 10 ? "0" : "") + hour;
-
-    var min  = date.getMinutes();
-    min = (min < 10 ? "0" : "") + min;
-
-    var sec  = date.getSeconds();
-    sec = (sec < 10 ? "0" : "") + sec;
-
-    var year = date.getFullYear();
-
-    var month = date.getMonth() + 1;
-    month = (month < 10 ? "0" : "") + month;
-
-    var day  = date.getDate();
-    day = (day < 10 ? "0" : "") + day;
-
-    return year + ":" + month + ":" + day + ":" + hour + ":" + min + ":" + sec;
-
-}
-
-function myfun_getDateTimeNumber() {
-
-    var date = new Date();
-	return date.getTime();
-}
-
 // begin gaode web api function .........................................................
 
 function gaodeweb_GetDistanceData(pSourcePoints,pTargetPoint,funcCallback,pCallOwner){
@@ -471,7 +440,7 @@ Handler.prototype.check_Register = function(msg,session,next) {
 		} else if(szResult == "failed") {
 			// can register
 			
-			var nCurTime = myfun_getDateTimeNumber();
+			var nCurTime = self.commonutil.getDateTimeNumber();
 			var szAccKey = self.commonutil.crypto(msg.username+nCurTime.toString());
 			var pInsertData = {
 				_name:0,
@@ -574,7 +543,7 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 				}
 				
 				// check password ok,then update acckey
-				var nCurTime = myfun_getDateTimeNumber();
+				var nCurTime = self.commonutil.getDateTimeNumber();
 				var szAccKey = self.commonutil.crypto(msg.username+nCurTime.toString());
 				var pInsertData = {
 					_id:pUserData.datas[0]._id,
@@ -1052,7 +1021,7 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 								var pNewMonsterData = myTable_RandomOneMonsterByBaseIndex(pExtData.basetypeindex);
 
 								// 进行占领操作
-								var nCurTime = myfun_getDateTimeNumber();
+								var nCurTime = self.commonutil.getDateTimeNumber();
 								if(szResult == "success"){// 有记录进行更新
 									var pUpdateData = {
 										_id:pPoiData.datas[0]._id,
@@ -1377,7 +1346,7 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 					pBattleData.sourcenames[i] = value.datas[0]._name;
 					i++;
 				});
-				pBattleData.begintime = myfun_getDateTimeNumber();
+				pBattleData.begintime = self.commonutil.getDateTimeNumber();
 // 				console.log("pUserData->",pUserData);
 // 				console.log("pDestPoiData->",pDestPoiData);
 				var pKey_OneBattle = self.rediscl.pRedisKeys.key_userid_poiid_battle(pUserData.datas[0]._id,pDestPoiData.datas[0]._id);

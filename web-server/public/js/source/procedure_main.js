@@ -64,6 +64,14 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
     } else if(szType == "close"){
       _gdata.model_util.BlockMsgHide();
       _gdata.model_notify.showNotify("Net Error", szType);
+
+      var self = this;
+      setTimeout(function(){
+        self.closeMe();
+        window.location.reload(true);
+      },2000);
+      
+
     } else if(szType == "heartbeat timeout"){
       _gdata.model_util.BlockMsgHide();
       _gdata.model_notify.showNotify("Net Error", szType);
@@ -72,6 +80,13 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
       _gdata.model_notify.showNotify("Net Error", szType);
     } else if(szType == "onKick"){
       _gdata.model_util.BlockMsgHide();
+
+      var self = this;
+      setTimeout(function(){
+        self.closeMe();
+        window.location.reload(true);
+      },2000);
+
       // do kick
     } else if(szType == "pushmsg"){
       _gdata.model_notify.showNotify("pushmsg", pData.msg);
@@ -917,7 +932,7 @@ define(['jquery', 'jqueryui', 'pnotify', 'md5', 'blockui'], {
     var singleton = this;
 
     _gdata.model_map.setEventCallbackData(singleton.onMapEvent, singleton);
-    _gdata.model_netmgr.setSystemCallback(singleton.DoNetworkMsg);
+    _gdata.model_netmgr.setSystemCallback(singleton.DoNetworkMsg, singleton);
     
     _gdata.model_util.BlockMsgShow("Get Last Location");
 

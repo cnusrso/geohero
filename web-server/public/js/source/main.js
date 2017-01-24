@@ -19,10 +19,10 @@ window.onerror = function(message, file, line, col, error) {
 
 var _gStartTime = new Date().getTime();
 
-window.onbeforeunload = function(e) {
-		e.returnValue   =   "是否关闭？";
-		return "aa";
-}
+// window.onbeforeunload = function(e) {
+// 		e.returnValue   =   "是否关闭？";
+// 		return "aa";
+// }
 
 function entryFun() {
 	console.log("entryFun",new Date().getTime()-_gStartTime);

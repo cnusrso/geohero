@@ -3,6 +3,7 @@ define(['md5'], {
 
 	bNetConnectOk: false,
 	pFuncSystemCallback: null,
+	pFuncSystemCallbackOwner: null,
 
 	init: function() {
 		var singleton = this;
@@ -14,7 +15,7 @@ define(['md5'], {
 			singleton.bNetConnectOk = false;
 			if(singleton.pFuncSystemCallback != null)
 				{
-					singleton.pFuncSystemCallback.call(singleton,"io-error",data);
+					singleton.pFuncSystemCallback.call(singleton.pFuncSystemCallbackOwner,"io-error",data);
 				}
 		});
 		window.pomelo.on("close", function(data) {
@@ -22,7 +23,7 @@ define(['md5'], {
 			singleton.bNetConnectOk = false;
 			if(singleton.pFuncSystemCallback != null)
 				{
-					singleton.pFuncSystemCallback.call(singleton,"close",data);
+					singleton.pFuncSystemCallback.call(singleton.pFuncSystemCallbackOwner,"close",data);
 				}
 		});
 		window.pomelo.on("heartbeat timeout", function(data) {
@@ -30,7 +31,7 @@ define(['md5'], {
 			singleton.bNetConnectOk = false;
 			if(singleton.pFuncSystemCallback != null)
 				{
-					singleton.pFuncSystemCallback.call(singleton,"heartbeat timeout",data);
+					singleton.pFuncSystemCallback.call(singleton.pFuncSystemCallbackOwner,"heartbeat timeout",data);
 				}
 		});
 		window.pomelo.on("error", function(data) {
@@ -38,7 +39,7 @@ define(['md5'], {
 			singleton.bNetConnectOk = false;
 			if(singleton.pFuncSystemCallback != null)
 				{
-					singleton.pFuncSystemCallback.call(singleton,"error",data);
+					singleton.pFuncSystemCallback.call(singleton.pFuncSystemCallbackOwner,"error",data);
 				}
 		});
 		window.pomelo.on("onKick", function(data) {
@@ -46,13 +47,13 @@ define(['md5'], {
 			singleton.bNetConnectOk = false;
 			if(singleton.pFuncSystemCallback != null)
 				{
-					singleton.pFuncSystemCallback.call(singleton,"onKick",data);
+					singleton.pFuncSystemCallback.call(singleton.pFuncSystemCallbackOwner,"onKick",data);
 				}
 		});
 		
 		window.pomelo.on("pushmsg",function(data){
 			if(singleton.pFuncSystemCallback != null){
-				singleton.pFuncSystemCallback.call(singleton,"pushmsg",data);
+				singleton.pFuncSystemCallback.call(singleton.pFuncSystemCallbackOwner,"pushmsg",data);
 			}
 		});
 // 		if (this.bNetConnectOk == false) {
@@ -67,8 +68,9 @@ define(['md5'], {
 
 	},
 	
-	setSystemCallback: function(_pFuncSystemCallback){
+	setSystemCallback: function(_pFuncSystemCallback,_pFuncOwner){
 		this.pFuncSystemCallback = _pFuncSystemCallback;
+		this.pFuncSystemCallbackOwner = _pFuncOwner;
 	},
 	
 	
