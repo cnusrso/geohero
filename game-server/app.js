@@ -38,6 +38,7 @@ function startmain(){
     myapp.set('_commonutil',require('./app/utils/commonUtil'));
     myapp.set('_tableUtil',require('./app/utils/tableUtil'));
     myapp.set('_databaseUtil',require('./app/utils/databaseOp')());
+    myapp.set('_directionUtil',require('./app/utils/directionOp')());
   });
 
   // config game server...
@@ -51,8 +52,8 @@ function startmain(){
     myapp.set('_commonutil',require('./app/utils/commonUtil'));
     myapp.set('_tableUtil',require('./app/utils/tableUtil'));
     myapp.set('_databaseUtil',require('./app/utils/databaseOp')());
-    // var pwd = myapp.get('_commonutil').buildEndPassword("abc","123");
-    // console.log("pppppppppppppppp",pwd);
+    myapp.set('_directionUtil',require('./app/utils/directionOp')());
+
   });
 
   

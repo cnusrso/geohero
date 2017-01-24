@@ -10,5 +10,6 @@ myrouteutil.game = function(session, msg, app, cb) {
 	}
 
 	var res = dispatcher.dispatch(session.get('uid'), gameServers);
+	// console.log("route to game server:->",res.id);
 	cb(null, res.id);
 };

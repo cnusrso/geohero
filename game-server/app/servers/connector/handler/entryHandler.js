@@ -1,94 +1,15 @@
-var AWS = require('aws-sdk');
-var myrequest = require('request');
-var myredis = require("redis");
-var myBabyParse = require("babyparse");
+// var AWS = require('aws-sdk');
+// var myrequest = require('request');
+// var myredis = require("redis");
+// var myBabyParse = require("babyparse");
 var myScheduler = require("pomelo-scheduler");
 var myasync = require("async");
 
 
 
 
-AWS.config.loadFromPath('./config/aws-config_testuser1.json');
-var dynamodb = new AWS.DynamoDB();
-
-var crypto = require('crypto');
-function myfun_crypto (text) {
-  return crypto.createHash('md5').update(text).digest('hex');
-};
-
-var sGaodeWebServiceKey = '957606db3c3518da4a5dda76d1641008';
-var sPrivateKey = 'b6e5a1d7de8220063267663c21e6e171';
-//var sKey = '957606db3c3518da4a5dda76d1641008';
-var sTable_t_account 	= '57067e02305a2a034b260fa2';
-var sTable_t_poi			= '570680c6305a2a034b262400';
-
-
-// begin gaode web api function .........................................................
-
-function gaodeweb_GetDistanceData(pSourcePoints,pTargetPoint,funcCallback,pCallOwner){
-	var sHttpGetHead = "http://restapi.amap.com/v3/distance?";
-	var sSig = myfun_crypto("destination="+pTargetPoint+"&key="+sGaodeWebServiceKey+"&origins="+pSourcePoints+sPrivateKey);
-	var sFullURL = sHttpGetHead+"origins="+pSourcePoints+"&destination="+pTargetPoint+"&key="+sGaodeWebServiceKey+"&sig="+sSig;
-	myrequest(sFullURL, function(error, response, body) {
-		var nResult = 0;
-		if (!error && response.statusCode == 200) {
-				nResult = 0;
-		} else {
-			console.log("gaodeweb_GetDistanceData failed:->",error, response, body);
-			nResult = 1;
-		}
-		if (pCallOwner != null && funcCallback != null) {
-			funcCallback.call(pCallOwner, nResult, body);
-		} else if (funcCallback != null) {
-			funcCallback(nResult, body);
-		}
-	});
-}
-
-function gaodeweb_GetDrivingData(pSourcePosition,pTargetPosition,pSourcePoi,pTargetPoi,funcCallback,pCallOwner,pCustomData){
-	var sHttpGetHead = "http://restapi.amap.com/v3/direction/driving?";
-	var sSig = myfun_crypto("destination="+pTargetPosition+"&destinationid="+pTargetPoi+"&key="+sGaodeWebServiceKey+"&origin="+pSourcePosition+"&originid="+pSourcePoi+sPrivateKey);
-	var sFullURL = sHttpGetHead+"origin="+pSourcePosition+"&originid="+pSourcePoi+"&destination="+pTargetPosition+"&destinationid="+pTargetPoi+"&key="+sGaodeWebServiceKey+"&sig="+sSig;
-	console.log("gaodeweb_GetDrivingData:->",sFullURL);
-	myrequest(sFullURL, function(error, response, body) {		
-		var nResult = 0;
-		if (!error && response.statusCode == 200) {
-				nResult = 0;
-		} else {
-			console.log("gaodeweb_GetDrivingData failed:->",error, response, body);
-			nResult = 1;
-		}
-// 		console.log("gaodeweb_GetDrivingData body:->",body);
-		if (pCallOwner != null && funcCallback != null) {
-			funcCallback.call(pCallOwner, nResult, body, pCustomData);
-		} else if (funcCallback != null) {
-			funcCallback(nResult, body, pCustomData);
-		}
-	});
-}
-
-function gaodeweb_GetWalkingData(pSourcePosition,pTargetPosition,funcCallback,pCallOwner,pCustomData){
-	var sHttpGetHead = "http://restapi.amap.com/v3/direction/walking?";
-	var sSig = myfun_crypto("destination="+pTargetPosition+"&key="+sGaodeWebServiceKey+"&origin="+pSourcePosition+sPrivateKey);
-	var sFullURL = sHttpGetHead+"origin="+pSourcePosition+"&destination="+pTargetPosition+"&key="+sGaodeWebServiceKey+"&sig="+sSig;
-	console.log("gaodeweb_GetWalkingData:->",sFullURL);
-	myrequest(sFullURL, function(error, response, body) {		
-		var nResult = 0;
-		if (!error && response.statusCode == 200) {
-				nResult = 0;
-		} else {
-			console.log("gaodeweb_GetWalkingData failed:->",error, response, body);
-			nResult = 1;
-		}
-		if (pCallOwner != null && funcCallback != null) {
-			funcCallback.call(pCallOwner, nResult, body, pCustomData);
-		} else if (funcCallback != null) {
-			funcCallback(nResult, body, pCustomData);
-		}
-	});
-}
-
-// end gaode web api function ..............................................................
+// AWS.config.loadFromPath('./config/aws-config_testuser1.json');
+// var dynamodb = new AWS.DynamoDB();
 
 
 var Handler = function(app) {
@@ -101,6 +22,7 @@ var Handler = function(app) {
   this.rediscl = app.get('_rediscl');
   this.tableutil = app.get('_tableUtil');
   this.databaseutil = app.get('_databaseUtil');
+  this.directionUtil = app.get('_directionUtil');
 };
 
 module.exports = function(app) {
@@ -179,7 +101,7 @@ Handler.prototype.mycache_GetPoiData = function(szPoiId, funcCallback, pCallOwne
 	self.rediscl.getDataByKey(pkey,1,function(sErr,sData){
 		if(sErr != null || sData == null){
 			var sFilter = "poiid:"+szPoiId;
-			self.databaseutil.yuntu_GetDataByFilter(sTable_t_poi,sFilter,function(nResult,sBody){
+			self.databaseutil.yuntu_GetDataByFilter(self.databaseutil.sTable_t_poi,sFilter,function(nResult,sBody){
 				var szResult = "";
 				var pResult = {};
 				if(nResult == 1){
@@ -222,7 +144,7 @@ Handler.prototype.mycache_GetUserPois = function(nUserId, funcCallback, pCallOwn
 	// 强制从库中更新数据方法
 	var pfunForceUpdate = function(){
 		var sFilter = "ownerid:"+nUserId;
-		self.databaseutil.yuntu_GetDataByFilter(sTable_t_poi,sFilter,function(nResult,sBody){
+		self.databaseutil.yuntu_GetDataByFilter(self.databaseutil.sTable_t_poi,sFilter,function(nResult,sBody){
 			var szResult = "";
 			var pResult = {};
 			console.log("again get user pois->",nResult,sBody);
@@ -285,7 +207,7 @@ Handler.prototype.mycache_GetUserData = function(szUserName, funcCallback, pCall
 		if(sErr != null || sData == null){
 			// user not in redis,get it from db
 			var sFilter = "account:"+szUserName;
-			self.databaseutil.yuntu_GetDataByFilter(sTable_t_account,sFilter,function(nResult,sBody){
+			self.databaseutil.yuntu_GetDataByFilter(self.databaseutil.sTable_t_account,sFilter,function(nResult,sBody){
 				var szResult = "";
 				var pResult = {};
 				if(nResult == 1){
@@ -330,7 +252,7 @@ Handler.prototype.mycache_GetDataByUserId = function(nId, funcCallback, pCallOwn
 		if(sErr != null || sData == null){
 			// user not in redis,get it from db
 			var sFilter = "_id:"+nId;
-			self.databaseutil.yuntu_GetDataByFilter(sTable_t_account,sFilter,function(nResult,sBody){
+			self.databaseutil.yuntu_GetDataByFilter(self.databaseutil.sTable_t_account,sFilter,function(nResult,sBody){
 				var szResult = "";
 				var pResult = {};
 				if(nResult == 1){
@@ -450,7 +372,7 @@ Handler.prototype.check_Register = function(msg,session,next) {
 				loginkey:szAccKey
 			};
 			var pData = JSON.stringify(pInsertData);
-			self.databaseutil.yuntu_AddNewData(sTable_t_account,pData,function(nResult,pResultBody){
+			self.databaseutil.yuntu_AddNewData(self.databaseutil.sTable_t_account,pData,function(nResult,pResultBody){
 				
 				if (nResult == 1) {
 					var pResult = JSON.parse(pResultBody);
@@ -550,7 +472,7 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 					loginkey:szAccKey
 				};
 				var pData = JSON.stringify(pInsertData);
-				self.databaseutil.yuntu_UpdateNewData(sTable_t_account,pData,function(nResult,sData){
+				self.databaseutil.yuntu_UpdateNewData(self.databaseutil.sTable_t_account,pData,function(nResult,sData){
 					if(nResult == 1){
 						var pResult = JSON.parse(sData);
 						if(pResult.status == 1)	{
@@ -719,7 +641,7 @@ Handler.prototype.setBirthPosition = function(msg,session,next) {
 				_location:szlocation
 			};
 			var pData = JSON.stringify(pInsertData);
-			self.databaseutil.yuntu_UpdateNewData(sTable_t_account,pData,function(nResult,sData){
+			self.databaseutil.yuntu_UpdateNewData(self.databaseutil.sTable_t_account,pData,function(nResult,sData){
 				if(nResult == 1){
 					var pResult = JSON.parse(sData);
 					if (pResult.status == 1) {
@@ -788,7 +710,7 @@ Handler.prototype.teleportToPosition = function(msg,session,next) {
 			};
 			var pData = JSON.stringify(pInsertData);
 			console.log("pData:",pData);
-			self.databaseutil.yuntu_UpdateNewData(sTable_t_account,pData,function(nResult,sData){
+			self.databaseutil.yuntu_UpdateNewData(self.databaseutil.sTable_t_account,pData,function(nResult,sData){
 				if(nResult == 1){
 					console.log("sData:",sData);
 					var pResult = JSON.parse(sData);
@@ -1013,7 +935,7 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 						loginkey:msg.acckey
 					};
 					var pData = JSON.stringify(pInsertData);
-					self.databaseutil.yuntu_UpdateNewData(sTable_t_account,pData,function(nResult,sData){
+					self.databaseutil.yuntu_UpdateNewData(self.databaseutil.sTable_t_account,pData,function(nResult,sData){
 						if(nResult == 1){
 							var pResult = JSON.parse(sData);
 							if(pResult.status == 1)	{
@@ -1036,7 +958,7 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 										monsterhp:pNewMonsterData.hp,
 									};
 									var pData = JSON.stringify(pUpdateData);
-									self.databaseutil.yuntu_UpdateNewData(sTable_t_poi,pData,function(nResult,pResultBody){
+									self.databaseutil.yuntu_UpdateNewData(self.databaseutil.sTable_t_poi,pData,function(nResult,pResultBody){
 										if (nResult == 1) {
 											var pResult = JSON.parse(pResultBody);
 											if (pResult.status == 1) {
@@ -1094,7 +1016,7 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 										monsterhp:pNewMonsterData.hp,
 									};
 									var pData = JSON.stringify(pInsertData);
-									self.databaseutil.yuntu_AddNewData(sTable_t_poi,pData,function(nResult,pResultBody){
+									self.databaseutil.yuntu_AddNewData(self.databaseutil.sTable_t_poi,pData,function(nResult,pResultBody){
 										if (nResult == 1) {
 											var pResult = JSON.parse(pResultBody);
 											if (pResult.status == 1) {
@@ -1297,7 +1219,7 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 						// 再请求？？
 						var pSourcePoint = pCustomData[0];
 						var pSourcePoi = pCustomData[1];
-						return gaodeweb_GetWalkingData(pSourcePoint,pTargetPoint,pFuncDoDistance,null,pCustomData);
+						return self.directionUtil.gaodeweb_GetWalkingData(pSourcePoint,pTargetPoint,pFuncDoDistance,null,pCustomData);
 // 						return callback(214,'Web Error Get Walking Data');
 					}
 					pAllDrivingData.push(pDistanceData);
@@ -1309,7 +1231,7 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 					var pSourcePoint = value.datas[0]._location;
 					var pSourcePoi = value.datas[0].poiid;
 					
-					gaodeweb_GetWalkingData(pSourcePoint,pTargetPoint,pFuncDoDistance,null,[pSourcePoint,pSourcePoi]);
+					self.directionUtil.gaodeweb_GetWalkingData(pSourcePoint,pTargetPoint,pFuncDoDistance,null,[pSourcePoint,pSourcePoi]);
 				});
 				
 				

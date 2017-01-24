@@ -10,6 +10,10 @@ var Handler = function() {
 
 	this.sYunTuKey = '957606db3c3518da4a5dda76d1641008';
 	this.sYunTuPrivateKey = 'b6e5a1d7de8220063267663c21e6e171';
+
+
+	this.sTable_t_account 		= '57067e02305a2a034b260fa2';
+	this.sTable_t_poi			= '570680c6305a2a034b262400';
 	
 };
 var handler = Handler.prototype;

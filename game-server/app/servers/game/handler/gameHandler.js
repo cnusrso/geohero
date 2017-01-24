@@ -30,6 +30,6 @@ handler.testMsg = function(msg, session, next) {
 		// console.log('BackendSessions',BackendSessions);		
 	});
 	
-
+	// console.log("game server testMsg:->",msg.username,this.app.getServerId());
 	next(null, {code: 200, msg: 'testMsg Ok:->'+msg.username+'->'+this.app.getServerId()});
 };
