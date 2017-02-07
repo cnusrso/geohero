@@ -54,37 +54,80 @@ Handler.prototype.loopfunc_updateBattle = function(data){
 
 
 	for(var i = 0; i < self.pScheduleUserIds.length; ++ i){		
-		if(self.pScheduleUserIds[i][1] != 1){
+		if(self.pScheduleUserIds[i][1] == 1){
 			continue;
 		}
 		var pKey_userid2battlekey = self.rediscl.pRedisKeys.key_userid_battlekey(self.pScheduleUserIds[i][0]);
 		self.rediscl.getDataByKey(pKey_userid2battlekey,i,function(sErr,sData,index){
 			if(sErr != null || sData == null){
 				// user id no battle data,make invalid.
-				self.pScheduleUserIds[index][1] = 0;
+				self.pScheduleUserIds[index][1] = 1;
 			}else{
-				var pUsersBattlesData = JSON.parse(sData);
-				for(var j = 0; j < pUsersBattlesData.length; ++ j){
-					self.rediscl.getDataByKey(pUsersBattlesData[j],j,function(sErr,sData,index){
-						if(sErr != null || sData == null){
+				var pUserAllBattleKey = JSON.parse(sData);
+				for(var j = 0; j < pUserAllBattleKey.length; ++ j){
+					self.rediscl.getDataByKey(pUserAllBattleKey[j],[j,index],function(sErr,sOneBattleData,indexj){
+						if(sErr != null || sOneBattleData == null){
 							return;
 						}
-						var oneBattleData = JSON.parse(sData);
-						var nLastTime = Math.floor(((new Date()).getTime() - oneBattleData.begintime)/1000);
-
-						var nAllTime = [];//each source position to dest pos data...
-						for(var d = 0; d < oneBattleData.distance.length; ++ d){
-							nAllTime[d] = 0;
-							oneBattleData.distance[d].route.paths[0].steps.forEach(function(onestep){
-								nAllTime[d] += parseInt(onestep.duration);
-							});
+						var oneBattleData = JSON.parse(sOneBattleData);
+						if(oneBattleData.isover == 1){
+							return;
 						}
-						for(var d = 0; d < nAllTime.length; ++ d){
-							if(nAllTime[d] <= nLastTime){
-								console.log("battle reached!!!",oneBattleData.sourceids,oneBattleData.targetid);
-							}else{								
-								console.log("battle in process!!!",parseInt(Math.floor(nLastTime*100/nAllTime[d]))+"%",oneBattleData.sourceids,oneBattleData.targetid);
+
+
+						var nThisBattleLastTime = Math.floor(((new Date()).getTime() - oneBattleData.begintime)/1000);
+						var bThisUserAllBattleOver = true;
+						for(var d = 0; d < oneBattleData.distance.length; ++ d){
+							var sThisLineStartPoiId = oneBattleData.distance[d].customData[1];
+							var nIsThisLineBattleEnd = oneBattleData.distance[d].customData[2];
+							if(nIsThisLineBattleEnd == 1){
+								continue;
 							}
+
+							var nThisLineCostTime = parseInt(oneBattleData.distance[d].route.paths[0].duration);							
+							if(nThisLineCostTime <= nThisBattleLastTime){
+								console.log("solider reached->",sThisLineStartPoiId,oneBattleData.targetid);
+								// do battle calc, hp,is occupyed..
+
+
+
+
+								// set this line battle end...
+								oneBattleData.distance[d].customData[2] = 1;
+								self.rediscl.setDataByKey(pUserAllBattleKey[indexj[0]],JSON.stringify(oneBattleData));
+
+								// push msg to client,if it online.
+								self.mycache_GetDataByUserId(self.pScheduleUserIds[indexj[1]][0],function(szResultOwner,pUserDataOwner){
+									if (szResultOwner == "success") {
+										var username = pUserDataOwner.datas[0].account;
+										var sessionService = self.app.get('sessionService');
+										var oldSession = sessionService.getByUid(username);
+										if(oldSession != null){
+											var channelService = self.app.get('channelService');
+											console.log("oldSession->",oldSession[0].uid);
+											channelService.pushMessageByUids("pushmsg",{code:578,msg:"battle start!!!"},[{uid:oldSession[0].uid, sid:oldSession[0].frontendId}],null,function(err){
+												if(err){
+													console.log("pushMessageByUids err",err);
+												}
+											});
+										}
+									} else if(szResultOwner == "failed") {
+										console.log("Can't find user id:",self.pScheduleUserIds[indexj[1]][0]);
+									} else {
+										console.log("system error:",szResultOwner);
+									}
+								});
+								
+								
+
+							}else{
+								console.log("solider on move to target->",parseInt(Math.floor(nThisBattleLastTime*100/nThisLineCostTime))+"%",sThisLineStartPoiId,oneBattleData.targetid);
+								bThisUserAllBattleOver = false;
+							}
+						}
+						if(bThisUserAllBattleOver == true){
+							oneBattleData.isover = 1;
+							self.rediscl.setDataByKey(pUserAllBattleKey[indexj[0]],JSON.stringify(oneBattleData));
 						}
 					});
 				}
@@ -944,7 +987,7 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 							var pResult = JSON.parse(sData);
 							if(pResult.status == 1)	{
 								// 随机产生一个怪数据
-								var pNewMonsterData = myTable_RandomOneMonsterByBaseIndex(pExtData.basetypeindex);
+								var pNewMonsterData = self.tableutil.randomOneMonsterByBaseIndex(pExtData.basetypeindex);
 
 								// 进行占领操作
 								var nCurTime = self.commonutil.getDateTimeNumber();
@@ -1226,7 +1269,10 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 						return self.directionUtil.gaodeweb_GetWalkingData(pSourcePoint,pTargetPoint,pFuncDoDistance,null,pCustomData);
 // 						return callback(214,'Web Error Get Walking Data');
 					}
+					pDistanceData.customData = pCustomData;
 					pAllDrivingData.push(pDistanceData);
+
+
 					if(pAllDrivingData.length >= pSourcePoiDatas.size){
 						return callback(null, pUserData, pUserBattleArray, pDestPoiData,pSourcePoiDatas,pAllDrivingData);
 					}
@@ -1235,7 +1281,7 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 					var pSourcePoint = value.datas[0]._location;
 					var pSourcePoi = value.datas[0].poiid;
 					
-					self.directionUtil.gaodeweb_GetWalkingData(pSourcePoint,pTargetPoint,pFuncDoDistance,null,[pSourcePoint,pSourcePoi]);
+					self.directionUtil.gaodeweb_GetWalkingData(pSourcePoint,pTargetPoint,pFuncDoDistance,null,[pSourcePoint,pSourcePoi,0]);
 				});
 				
 				
@@ -1262,6 +1308,7 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 				pBattleData.targetid = pDestPoiData.datas[0].poiid;
 				pBattleData.targetpos = pDestPoiData.datas[0]._location;
 				pBattleData.targetname = pDestPoiData.datas[0]._name;
+				pBattleData.isover = 0; // is battle all over??
 				pBattleData.sourceids = new Array(pSourcePoiDatas.size);
 				pBattleData.sourceposs = new Array(pSourcePoiDatas.size);
 				pBattleData.sourcenames = new Array(pSourcePoiDatas.size);
@@ -1286,15 +1333,22 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 				
 				// 5 update battle time
 				var bAlreadyPush = false;
+				var nFindIndex = -1;
 				for(var i = 0; i < self.pScheduleUserIds.length; ++ i){
 					if(self.pScheduleUserIds[i][0] == pUserData.datas[0]._id){
 						bAlreadyPush = true;
+						nFindIndex = i;
 						break;
 					}
 				}
 				if(bAlreadyPush == false){
-					self.pScheduleUserIds.push([pUserData.datas[0]._id,1]);
+					// [0:userid,1:all over?]
+					self.pScheduleUserIds.push([pUserData.datas[0]._id,0]);
+					nFindIndex = self.pScheduleUserIds.length - 1;
+				}else{
+					self.pScheduleUserIds[nFindIndex][1] = 0;
 				}
+
 				if(self.pScheduleJobId <= 0){
 					self.pScheduleJobId = myScheduler.scheduleJob({
 						start:Date.now(), 

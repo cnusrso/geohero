@@ -155,10 +155,10 @@ tableUtil.randomOneMonsterByBaseIndex = function(nIndex){
                 if(pMonsterData.table.data[j][mindex_id] == nRandomMonsterIndex){   
                     return {
                         id:nRandomMonsterIndex,
-                        name:pMonsterData.table.data[j][t_monster.get("name")],
-                        hp:pMonsterData.table.data[j][t_monster.get("hp")],
-                        award:pMonsterData.table.data[j][t_monster.get("award")],
-                        icon:pMonsterData.table.data[j][t_monster.get("icon")]
+                        name:pMonsterData.table.data[j][pMonsterData.map.get("name")],
+                        hp:pMonsterData.table.data[j][pMonsterData.map.get("hp")],
+                        award:pMonsterData.table.data[j][pMonsterData.map.get("award")],
+                        icon:pMonsterData.table.data[j][pMonsterData.map.get("icon")]
                     };
                 }
             }
