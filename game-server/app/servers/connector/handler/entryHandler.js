@@ -48,7 +48,7 @@ Handler.prototype.OnExit = function(){
 
 // check battle status...
 Handler.prototype.loopfunc_updateBattle = function(data){
-	console.log("loopfunc_updateBattle :",data.owner.app.getServerId(),data.owner.pScheduleUserIds);
+	// console.log("loopfunc_updateBattle :",data.owner.app.getServerId(),data.owner.pScheduleUserIds);
 
 	var self = data.owner;
 
@@ -104,8 +104,8 @@ Handler.prototype.loopfunc_updateBattle = function(data){
 										var oldSession = sessionService.getByUid(username);
 										if(oldSession != null){
 											var channelService = self.app.get('channelService');
-											console.log("oldSession->",oldSession[0].uid);
-											channelService.pushMessageByUids("pushmsg",{code:578,msg:"battle start!!!"},[{uid:oldSession[0].uid, sid:oldSession[0].frontendId}],null,function(err){
+											// console.log("oldSession->",oldSession[0].uid);
+											channelService.pushMessageByUids("pushmsg",{code:1,msg:"solider reached!!!"},[{uid:oldSession[0].uid, sid:oldSession[0].frontendId}],null,function(err){
 												if(err){
 													console.log("pushMessageByUids err",err);
 												}

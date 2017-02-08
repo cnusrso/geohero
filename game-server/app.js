@@ -7,6 +7,8 @@ function startmain(){
 
   var pomelo = require('pomelo');
   var myrouteUtil = require('./app/utils/routeUtil');
+  var bMultiServer = false;
+
   /**
    * Init app for client.
    */
@@ -31,8 +33,10 @@ function startmain(){
       useProtobuf : true
     });
 
-    // set route gameserver config
-    myapp.route('game', myrouteUtil.game);
+    if(bMultiServer){
+      // set route gameserver config
+      myapp.route('game', myrouteUtil.game);
+    }
 
     myapp.set('_rediscl',require('./app/utils/redisHandler')(myapp));
     myapp.set('_commonutil',require('./app/utils/commonUtil'));
@@ -41,20 +45,23 @@ function startmain(){
     myapp.set('_directionUtil',require('./app/utils/directionOp')());
   });
 
-  // config game server...
-  myapp.configure('production|development', 'game', function(){
-    myapp.set('connectorConfig',{
-      connector : pomelo.connectors.hybridconnector,
+  if(bMultiServer){
+    // config game server...
+    myapp.configure('production|development', 'game', function(){
+      myapp.set('connectorConfig',{
+        connector : pomelo.connectors.hybridconnector,
+      });
+
+
+      myapp.set('_rediscl',require('./app/utils/redisHandler')(myapp));
+      myapp.set('_commonutil',require('./app/utils/commonUtil'));
+      myapp.set('_tableUtil',require('./app/utils/tableUtil'));
+      myapp.set('_databaseUtil',require('./app/utils/databaseOp')());
+      myapp.set('_directionUtil',require('./app/utils/directionOp')());
+
     });
-
-
-    myapp.set('_rediscl',require('./app/utils/redisHandler')(myapp));
-    myapp.set('_commonutil',require('./app/utils/commonUtil'));
-    myapp.set('_tableUtil',require('./app/utils/tableUtil'));
-    myapp.set('_databaseUtil',require('./app/utils/databaseOp')());
-    myapp.set('_directionUtil',require('./app/utils/directionOp')());
-
-  });
+  }
+  
 
   
   // 显示异常。。。

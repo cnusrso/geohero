@@ -75,6 +75,15 @@ define(['md5'], {
 	
 	
 	queryConnectorConfig: function(userName,funcCallback,pCallOwner){
+
+		// use single server mode, use host port on datadefine.js
+		if(pCallOwner != null)
+			funcCallback.call(pCallOwner,"queryConnector",1);
+		else
+			funcCallback.call("queryConnector",1);
+		return;
+		////
+
 		if(_gdata.model_datacfg.ConnectorConfig.updatetime > 0){
 			//
 			if(pCallOwner != null)
