@@ -46,6 +46,36 @@ Handler.prototype.OnExit = function(){
 	console.log("begin exit!!!!!!!!!!!!",this.app.getServerId());
 };
 
+
+Handler.prototype.func_PushMsgToClient = function(nUserId,sMsgId,pMsgData){
+	var self = this;
+
+	self.mycache_GetDataByUserId(nUserId,function(szResultOwner,pUserDataOwner){
+		if (szResultOwner != "success") {
+			console.log("func_PushMsgToClient mycache_GetDataByUserId err",szResultOwner);
+			return;
+		}
+		var username = pUserDataOwner.datas[0].account;
+		var sessionService = self.app.get('sessionService');
+		var oldSession = sessionService.getByUid(username);
+		if(oldSession != null){
+			var channelService = self.app.get('channelService');
+
+			channelService.pushMessageByUids(
+				"pushmsg",
+				{id:sMsgId,data:pMsgData},
+				[{uid:oldSession[0].uid, sid:oldSession[0].frontendId}],
+				null,
+				function(err){
+					if(err){
+						console.log("func_PushMsgToClient err",err);
+					}
+				}
+			);
+		}
+	});
+};
+
 // check battle status...
 Handler.prototype.loopfunc_updateBattle = function(data){
 	// console.log("loopfunc_updateBattle :",data.owner.app.getServerId(),data.owner.pScheduleUserIds);
@@ -57,18 +87,22 @@ Handler.prototype.loopfunc_updateBattle = function(data){
 		if(self.pScheduleUserIds[i][1] == 1){
 			continue;
 		}
+
+		// read one player's battle data.
 		var pKey_userid2battlekey = self.rediscl.pRedisKeys.key_userid_battlekey(self.pScheduleUserIds[i][0]);
 		self.rediscl.getDataByKey(pKey_userid2battlekey,i,function(sErr,sData,index){
 			if(sErr != null || sData == null){
 				// user id no battle data,make invalid.
 				self.pScheduleUserIds[index][1] = 1;
 			}else{
+				// read one player's all battle keys
 				var pUserAllBattleKey = JSON.parse(sData);
 				for(var j = 0; j < pUserAllBattleKey.length; ++ j){
 					self.rediscl.getDataByKey(pUserAllBattleKey[j],[j,index],function(sErr,sOneBattleData,indexj){
 						if(sErr != null || sOneBattleData == null){
 							return;
 						}
+						// read one player's one battle data,each battle contain some subline battle
 						var oneBattleData = JSON.parse(sOneBattleData);
 						if(oneBattleData.isover == 1){
 							return;
@@ -76,59 +110,136 @@ Handler.prototype.loopfunc_updateBattle = function(data){
 
 
 						var nThisBattleLastTime = Math.floor(((new Date()).getTime() - oneBattleData.begintime)/1000);
-						var bThisUserAllBattleOver = true;
+						var bAllSubLineBattleOver = true;
+						// calcate each subline battle..
 						for(var d = 0; d < oneBattleData.distance.length; ++ d){
 							var sThisLineStartPoiId = oneBattleData.distance[d].customData[1];
 							var nIsThisLineBattleEnd = oneBattleData.distance[d].customData[2];
 							if(nIsThisLineBattleEnd == 1){
 								continue;
 							}
+							bAllSubLineBattleOver = false;
 
-							var nThisLineCostTime = parseInt(oneBattleData.distance[d].route.paths[0].duration);							
-							if(nThisLineCostTime <= nThisBattleLastTime){
-								console.log("solider reached->",sThisLineStartPoiId,oneBattleData.targetid);
-								// do battle calc, hp,is occupyed..
-
-
-
-
-								// set this line battle end...
-								oneBattleData.distance[d].customData[2] = 1;
-								self.rediscl.setDataByKey(pUserAllBattleKey[indexj[0]],JSON.stringify(oneBattleData));
-
-								// push msg to client,if it online.
-								self.mycache_GetDataByUserId(self.pScheduleUserIds[indexj[1]][0],function(szResultOwner,pUserDataOwner){
-									if (szResultOwner == "success") {
-										var username = pUserDataOwner.datas[0].account;
-										var sessionService = self.app.get('sessionService');
-										var oldSession = sessionService.getByUid(username);
-										if(oldSession != null){
-											var channelService = self.app.get('channelService');
-											// console.log("oldSession->",oldSession[0].uid);
-											channelService.pushMessageByUids("pushmsg",{code:1,msg:"solider reached!!!"},[{uid:oldSession[0].uid, sid:oldSession[0].frontendId}],null,function(err){
-												if(err){
-													console.log("pushMessageByUids err",err);
-												}
-											});
-										}
-									} else if(szResultOwner == "failed") {
-										console.log("Can't find user id:",self.pScheduleUserIds[indexj[1]][0]);
-									} else {
-										console.log("system error:",szResultOwner);
-									}
-								});
-								
-								
-
-							}else{
-								console.log("solider on move to target->",parseInt(Math.floor(nThisBattleLastTime*100/nThisLineCostTime))+"%",sThisLineStartPoiId,oneBattleData.targetid);
-								bThisUserAllBattleOver = false;
+							var nThisLineMaxCostTime = parseInt(oneBattleData.distance[d].route.paths[0].duration);
+							if(nThisLineMaxCostTime > nThisBattleLastTime){
+								// solider move on road..
+								console.log("solider on move to target->",parseInt(Math.floor(nThisBattleLastTime*100/nThisLineMaxCostTime))+"%",sThisLineStartPoiId,oneBattleData.targetid);
+								continue;
 							}
+
+							console.log("solider reached->",sThisLineStartPoiId,oneBattleData.targetid);
+							// set this subline battle end...
+							oneBattleData.distance[d].customData[2] = 1;
+							self.rediscl.setDataByKey(pUserAllBattleKey[indexj[0]],JSON.stringify(oneBattleData));
+
+							// do battle calc, hp,is occupyed..
+							myasync.waterfall(
+								[
+									function(callback) {
+										console.log("1 get attacker's poi data");
+										self.mycache_GetPoiData(sThisLineStartPoiId,function(szResult,pSourcePoiData){
+											if(szResult != "success"){
+												return callback(201,szResult);
+											}
+											callback(null,pSourcePoiData,oneBattleData.targetid);
+										});
+									},
+									function (pSourcePoiData,targetId,callback){
+										console.log("2 get defenser's poi data");
+										self.mycache_GetPoiData(targetId,function(szResult,pTargetPoiData){
+											if(szResult != "success"){
+												return callback(202,szResult);
+											}
+											callback(null,pSourcePoiData,pTargetPoiData);
+										});
+									},
+									function (pSourcePoiData,pTargetPoiData,callback){
+										console.log("3 begin calcate");
+										var nCurTime = self.commonutil.getDateTimeNumber();
+
+										var nAttackerUserId = pSourcePoiData.datas[0].ownerid;
+										var nDefenserUserId = pTargetPoiData.datas[0].ownerid;
+										var nAttackerPoiId = pSourcePoiData.datas[0].poiid;
+										var nDefenserPoiId = pTargetPoiData.datas[0].poiid;
+										var nAttackerMonsterHp = pSourcePoiData.datas[0].monsterhp;
+										var nDefenserMonsterHp = pTargetPoiData.datas[0].monsterhp;										
+										var nAttackerMonsterEndHp = nAttackerMonsterHp;
+										var nDefenserMonsterEndHp = nDefenserMonsterHp - nAttackerMonsterHp;
+
+										if(nAttackerUserId == nDefenserUserId){
+											// already occupyed, other subline occupy it,not need fight.
+											nDefenserMonsterEndHp = nDefenserMonsterHp;
+										}else{
+											console.log("nDefenserMonsterEndHp->",nDefenserMonsterEndHp);
+											if(nDefenserMonsterEndHp < 0){
+												// attacker occupy this poi success
+												// set target poi's owner is attacker
+												pTargetPoiData.datas[0].ownerid = pSourcePoiData.datas[0].ownerid;
+												// reset target poi's monster hp to max
+												var pLineData = self.tableutil.getLineById(self.tableutil.pTables.t_monster.table.data,parseInt(pTargetPoiData.datas[0].monsterid));
+												pTargetPoiData.datas[0].monsterhp = self.tableutil.getLineValue(pLineData,self.tableutil.pTables.t_monster.map,"hp");
+												pTargetPoiData.datas[0].occupytime = nCurTime;
+												pTargetPoiData.datas[0].battleovertime = nCurTime;
+												pTargetPoiData.datas[0].battlestatus = 0;
+												// set 
+												// update it.
+												self.mycache_SetPoiData(pTargetPoiData.datas[0].poiid,JSON.stringify(pTargetPoiData));
+
+												// set attacker poi leave battle
+												pSourcePoiData.datas[0].battlestatus = 0;
+												self.mycache_SetPoiData(pSourcePoiData.datas[0].poiid,JSON.stringify(pSourcePoiData));
+											}else{
+												// defenser monster hp loss...
+												pTargetPoiData.datas[0].monsterhp = nDefenserMonsterEndHp;
+												// update it.
+												self.mycache_SetPoiData(pTargetPoiData.datas[0].poiid,JSON.stringify(pTargetPoiData));
+
+												// set attacker poi leave battle
+												pSourcePoiData.datas[0].battlestatus = 0;
+												self.mycache_SetPoiData(pSourcePoiData.datas[0].poiid,JSON.stringify(pSourcePoiData));
+											}
+										}
+										
+										callback(null,{
+											attacker:nAttackerUserId,
+											defenser:nDefenserUserId,
+											attackerpoi:nAttackerPoiId,
+											defenserpoi:nDefenserPoiId,
+											attackerhp:nAttackerMonsterHp,
+											defenserhp:nDefenserMonsterHp,
+											attackerendhp:nAttackerMonsterEndHp,
+											defenserendhp:nDefenserMonsterEndHp
+										});
+									},
+								],
+								function(err, result) {
+									if(err !== null){
+										// an error occur,push to client...
+										console.log("battle calcate error",err,result);
+										return;
+									} else {
+
+										// push battle result msg to attacker/defenser client
+										self.func_PushMsgToClient(result.attacker,'battle_result',result);
+										self.func_PushMsgToClient(result.defenser,'battle_result',result);
+										return;
+									}
+								}
+							);
 						}
-						if(bThisUserAllBattleOver == true){
+						if(bAllSubLineBattleOver){
 							oneBattleData.isover = 1;
 							self.rediscl.setDataByKey(pUserAllBattleKey[indexj[0]],JSON.stringify(oneBattleData));
+
+							self.mycache_GetPoiData(oneBattleData.targetid,function(szResult,pTargetPoiData){
+								if(szResult != "success"){
+									console.log("get poi data err",szResult,pTargetPoiData);
+								}
+								pTargetPoiData.datas[0].battlestatus = 0;
+								self.mycache_SetPoiData(pTargetPoiData.datas[0].poiid,JSON.stringify(pTargetPoiData));
+							});
 						}
+
 					});
 				}
 			}
@@ -1325,11 +1436,21 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 				var pKey_OneBattle = self.rediscl.pRedisKeys.key_userid_poiid_battle(pUserData.datas[0]._id,pDestPoiData.datas[0]._id);
 				self.rediscl.setDataByKey(pKey_OneBattle,JSON.stringify(pBattleData));
 				
-				// 4 缓存userid对应战斗id
-				var pKey_userid2battlekey = self.rediscl.pRedisKeys.key_userid_battlekey(pUserData.datas[0]._id);
-				pUserBattleArray.push(pKey_OneBattle);
-				var pSendData = JSON.stringify(pUserBattleArray);
-				self.rediscl.setDataByKey(pKey_userid2battlekey,pSendData);
+				// 4 缓存userid对应战斗key
+				var bHasInsert = false;
+				for(var i = 0; i < pUserBattleArray.length; ++ i){
+					if(pUserBattleArray[i] == pKey_OneBattle){
+						bHasInsert = true;
+						break;
+					}
+				}
+				if(bHasInsert == false){
+					pUserBattleArray.push(pKey_OneBattle);
+					var pSendData = JSON.stringify(pUserBattleArray);
+					var pKey_userid2battlekey = self.rediscl.pRedisKeys.key_userid_battlekey(pUserData.datas[0]._id);
+					self.rediscl.setDataByKey(pKey_userid2battlekey,pSendData);
+				}
+				
 				
 				// 5 update battle time
 				var bAlreadyPush = false;
