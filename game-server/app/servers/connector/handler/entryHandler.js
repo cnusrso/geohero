@@ -23,6 +23,8 @@ var Handler = function(app) {
   this.tableutil = app.get('_tableUtil');
   this.databaseutil = app.get('_databaseUtil');
   this.directionUtil = app.get('_directionUtil');
+
+  //edit by ipad
 };
 
 module.exports = function(app) {
