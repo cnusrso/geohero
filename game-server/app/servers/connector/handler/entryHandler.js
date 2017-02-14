@@ -78,6 +78,25 @@ Handler.prototype.func_PushMsgToClient = function(nUserId,sMsgId,pMsgData){
 	});
 };
 
+Handler.prototype.loopfunc_DoDirtyData = function(data){
+	var self = data.owner;
+
+	var pKey = self.rediscl.pRedisListKeys.list_key_all_dirty_poiid();
+	self.rediscl.listLPop(pKey,1,function(err,reply,pExtData){
+		if(err != null){
+			console.log("rediscl.listLPop err",err,"key:",pKey);
+			return;
+		}
+		if(reply == null){
+			// no dirty data
+			return;
+		}
+
+		
+	});
+
+};
+
 // check battle status...
 Handler.prototype.loopfunc_updateBattle = function(data){
 	// console.log("loopfunc_updateBattle :",data.owner.app.getServerId(),data.owner.pScheduleUserIds);
@@ -176,7 +195,9 @@ Handler.prototype.loopfunc_updateBattle = function(data){
 											if(nDefenserMonsterEndHp < 0){
 												// attacker occupy this poi success
 												// set target poi's owner is attacker
-												pTargetPoiData.datas[0].ownerid = pSourcePoiData.datas[0].ownerid;
+												var nOldSourceOwnerId = pSourcePoiData.datas[0].ownerid;
+												var nOldTargetOwnerId = pTargetPoiData.datas[0].ownerid;
+												pTargetPoiData.datas[0].ownerid = nOldSourceOwnerId;
 												// reset target poi's monster hp to max
 												var pLineData = self.tableutil.getLineById(self.tableutil.pTables.t_monster.table.data,parseInt(pTargetPoiData.datas[0].monsterid));
 												pTargetPoiData.datas[0].monsterhp = self.tableutil.getLineValue(pLineData,self.tableutil.pTables.t_monster.map,"hp");
@@ -190,6 +211,57 @@ Handler.prototype.loopfunc_updateBattle = function(data){
 												// set attacker poi leave battle
 												pSourcePoiData.datas[0].battlestatus = 0;
 												self.mycache_SetPoiData(pSourcePoiData.datas[0].poiid,JSON.stringify(pSourcePoiData));
+
+												var pUpdateData = {
+													_id:pTargetPoiData.datas[0]._id,
+													ownerid:pTargetPoiData.datas[0].ownerid,
+													occupytime:pTargetPoiData.datas[0].occupytime,
+													battleovertime:pTargetPoiData.datas[0].battleovertime,
+													battlestatus:pTargetPoiData.datas[0].battlestatus,
+													monsterhp:pTargetPoiData.datas[0].monsterhp,
+												};
+												var pUpdateDataJson = JSON.stringify(pUpdateData);
+												self.databaseutil.yuntu_UpdateNewData(self.databaseutil.sTable_t_poi,pUpdateDataJson,function(nResult,pResultBody){
+													if (nResult != 1){
+														console.log("update target poi data err",nResult)
+														return;
+													}
+													var pResult = JSON.parse(pResultBody);
+													if (pResult.status != 1) {
+														console.log("update target poi data err status",pResult.status)
+														return;
+													}
+													// 标记user对应的pois数据有变化
+													var sKeyDirty = self.rediscl.pRedisKeys.key_userid_pois_dirty(nOldTargetOwnerId);
+													self.rediscl.setDataByKey(sKeyDirty,"1");
+
+													var pUpdateData = {
+														_id:pSourcePoiData.datas[0]._id,
+														ownerid:pSourcePoiData.datas[0].ownerid,
+														battleovertime:pSourcePoiData.datas[0].battleovertime,
+														battlestatus:pSourcePoiData.datas[0].battlestatus,
+													};
+													var pUpdateDataJson = JSON.stringify(pUpdateData);
+													self.databaseutil.yuntu_UpdateNewData(self.databaseutil.sTable_t_poi,pUpdateDataJson,function(nResult,pResultBody){
+														if (nResult != 1){
+															console.log("update source poi data err",nResult)
+															return;
+														}
+														var pResult = JSON.parse(pResultBody);
+														if (pResult.status != 1) {
+															console.log("update source poi data err status",pResult.status)
+															return;
+														}
+														// 标记user对应的pois数据有变化
+														var sKeyDirty = self.rediscl.pRedisKeys.key_userid_pois_dirty(nOldSourceOwnerId);
+														self.rediscl.setDataByKey(sKeyDirty,"1");
+
+													});
+												});
+
+
+
+
 											}else{
 												// defenser monster hp loss...
 												pTargetPoiData.datas[0].monsterhp = nDefenserMonsterEndHp;
