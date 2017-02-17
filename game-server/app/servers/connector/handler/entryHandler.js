@@ -24,6 +24,8 @@ var Handler = function(app) {
   this.databaseutil = app.get('_databaseUtil');
   this.directionUtil = app.get('_directionUtil');
 
+  this.cachemgr = app.get('_cachemgr');
+
   //edit by ipad
 };
 
@@ -52,9 +54,9 @@ Handler.prototype.OnExit = function(){
 Handler.prototype.func_PushMsgToClient = function(nUserId,sMsgId,pMsgData){
 	var self = this;
 
-	self.mycache_GetDataByUserId(nUserId,function(szResultOwner,pUserDataOwner){
+	self.cachemgr.UserData_GetById(nUserId,1,function(szResultOwner,pUserDataOwner){
 		if (szResultOwner != "success") {
-			console.log("func_PushMsgToClient mycache_GetDataByUserId err",szResultOwner);
+			console.log("func_PushMsgToClient cachemgr.UserData_GetById err",szResultOwner);
 			return;
 		}
 		var username = pUserDataOwner.datas[0].account;
@@ -78,24 +80,6 @@ Handler.prototype.func_PushMsgToClient = function(nUserId,sMsgId,pMsgData){
 	});
 };
 
-Handler.prototype.loopfunc_DoDirtyData = function(data){
-	var self = data.owner;
-
-	var pKey = self.rediscl.pRedisListKeys.list_key_all_dirty_poiid();
-	self.rediscl.listLPop(pKey,1,function(err,reply,pExtData){
-		if(err != null){
-			console.log("rediscl.listLPop err",err,"key:",pKey);
-			return;
-		}
-		if(reply == null){
-			// no dirty data
-			return;
-		}
-
-		
-	});
-
-};
 
 // check battle status...
 Handler.prototype.loopfunc_updateBattle = function(data){
@@ -158,7 +142,7 @@ Handler.prototype.loopfunc_updateBattle = function(data){
 								[
 									function(callback) {
 										console.log("1 get attacker's poi data");
-										self.mycache_GetPoiData(sThisLineStartPoiId,function(szResult,pSourcePoiData){
+										self.cachemgr.PoiData_Get(sThisLineStartPoiId,1,function(szResult,pSourcePoiData){
 											if(szResult != "success"){
 												return callback(201,szResult);
 											}
@@ -167,7 +151,7 @@ Handler.prototype.loopfunc_updateBattle = function(data){
 									},
 									function (pSourcePoiData,targetId,callback){
 										console.log("2 get defenser's poi data");
-										self.mycache_GetPoiData(targetId,function(szResult,pTargetPoiData){
+										self.cachemgr.PoiData_Get(targetId,1,function(szResult,pTargetPoiData){
 											if(szResult != "success"){
 												return callback(202,szResult);
 											}
@@ -206,71 +190,50 @@ Handler.prototype.loopfunc_updateBattle = function(data){
 												pTargetPoiData.datas[0].battlestatus = 0;
 												// set 
 												// update it.
-												self.mycache_SetPoiData(pTargetPoiData.datas[0].poiid,JSON.stringify(pTargetPoiData));
+												self.cachemgr.PoiData_Set(pTargetPoiData.datas[0].poiid,JSON.stringify(pTargetPoiData),1);
+												// set defeners sub pois data.
+												self.cachemgr.UserPois_Get(nOldTargetOwnerId,1,function(sResult, pResult, outExtData){
+													if(sResult != "success"){
+														console.log("Can't Get User's Pois ->",sResult,nOldTargetOwnerId);
+														if(sResult == "notcache"){
+															// user not online, not cache pois data.
+														}
+														return;
+													}
+													for(var i = 0; i < pResult.count; ++ i){
+														if(pResult.datas[i].poiid == pTargetPoiData.datas[0].poiid){
+															pResult.datas.splice(i,1);
+															break;
+														}
+													}
+													pResult.count --;
+													self.cachemgr.UserPois_Set(nOldTargetOwnerId,JSON.stringify(pResult));
+												});
 
 												// set attacker poi leave battle
 												pSourcePoiData.datas[0].battlestatus = 0;
-												self.mycache_SetPoiData(pSourcePoiData.datas[0].poiid,JSON.stringify(pSourcePoiData));
-
-												var pUpdateData = {
-													_id:pTargetPoiData.datas[0]._id,
-													ownerid:pTargetPoiData.datas[0].ownerid,
-													occupytime:pTargetPoiData.datas[0].occupytime,
-													battleovertime:pTargetPoiData.datas[0].battleovertime,
-													battlestatus:pTargetPoiData.datas[0].battlestatus,
-													monsterhp:pTargetPoiData.datas[0].monsterhp,
-												};
-												var pUpdateDataJson = JSON.stringify(pUpdateData);
-												self.databaseutil.yuntu_UpdateNewData(self.databaseutil.sTable_t_poi,pUpdateDataJson,function(nResult,pResultBody){
-													if (nResult != 1){
-														console.log("update target poi data err",nResult)
+												self.cachemgr.PoiData_Set(pSourcePoiData.datas[0].poiid,JSON.stringify(pSourcePoiData),1);
+												// set attacker's add pois data.
+												self.cachemgr.UserPois_Get(nOldSourceOwnerId,1,function(sResult, pResult, outExtData){
+													if(sResult != "success"){
+														console.log("Can't Get User's Pois ->",sResult,nOldSourceOwnerId);
+														if(sResult == "notcache"){
+															// user not online, not cache pois data.
+														}
 														return;
 													}
-													var pResult = JSON.parse(pResultBody);
-													if (pResult.status != 1) {
-														console.log("update target poi data err status",pResult.status)
-														return;
-													}
-													// 标记user对应的pois数据有变化
-													var sKeyDirty = self.rediscl.pRedisKeys.key_userid_pois_dirty(nOldTargetOwnerId);
-													self.rediscl.setDataByKey(sKeyDirty,"1");
-
-													var pUpdateData = {
-														_id:pSourcePoiData.datas[0]._id,
-														ownerid:pSourcePoiData.datas[0].ownerid,
-														battleovertime:pSourcePoiData.datas[0].battleovertime,
-														battlestatus:pSourcePoiData.datas[0].battlestatus,
-													};
-													var pUpdateDataJson = JSON.stringify(pUpdateData);
-													self.databaseutil.yuntu_UpdateNewData(self.databaseutil.sTable_t_poi,pUpdateDataJson,function(nResult,pResultBody){
-														if (nResult != 1){
-															console.log("update source poi data err",nResult)
-															return;
-														}
-														var pResult = JSON.parse(pResultBody);
-														if (pResult.status != 1) {
-															console.log("update source poi data err status",pResult.status)
-															return;
-														}
-														// 标记user对应的pois数据有变化
-														var sKeyDirty = self.rediscl.pRedisKeys.key_userid_pois_dirty(nOldSourceOwnerId);
-														self.rediscl.setDataByKey(sKeyDirty,"1");
-
-													});
+													pResult.datas[pResult.count ++] = JSON.parse(JSON.stringify(pTargetPoiData.datas[0]));
+													self.cachemgr.UserPois_Set(nOldSourceOwnerId,JSON.stringify(pResult));
 												});
-
-
-
-
 											}else{
 												// defenser monster hp loss...
 												pTargetPoiData.datas[0].monsterhp = nDefenserMonsterEndHp;
 												// update it.
-												self.mycache_SetPoiData(pTargetPoiData.datas[0].poiid,JSON.stringify(pTargetPoiData));
+												self.cachemgr.PoiData_Set(pTargetPoiData.datas[0].poiid,JSON.stringify(pTargetPoiData),1);
 
 												// set attacker poi leave battle
 												pSourcePoiData.datas[0].battlestatus = 0;
-												self.mycache_SetPoiData(pSourcePoiData.datas[0].poiid,JSON.stringify(pSourcePoiData));
+												self.cachemgr.PoiData_Set(pSourcePoiData.datas[0].poiid,JSON.stringify(pSourcePoiData),1);
 											}
 										}
 										
@@ -305,12 +268,12 @@ Handler.prototype.loopfunc_updateBattle = function(data){
 							oneBattleData.isover = 1;
 							self.rediscl.setDataByKey(pUserAllBattleKey[indexj[0]],JSON.stringify(oneBattleData));
 
-							self.mycache_GetPoiData(oneBattleData.targetid,function(szResult,pTargetPoiData){
+							self.cachemgr.PoiData_Get(oneBattleData.targetid,1,function(szResult,pTargetPoiData){
 								if(szResult != "success"){
 									console.log("get poi data err",szResult,pTargetPoiData);
 								}
 								pTargetPoiData.datas[0].battlestatus = 0;
-								self.mycache_SetPoiData(pTargetPoiData.datas[0].poiid,JSON.stringify(pTargetPoiData));
+								self.cachemgr.PoiData_Set(pTargetPoiData.datas[0].poiid,JSON.stringify(pTargetPoiData),1);
 							});
 						}
 
@@ -323,110 +286,7 @@ Handler.prototype.loopfunc_updateBattle = function(data){
 
 
 // warp self cache function ...........................................................
-Handler.prototype.mycache_SetPoiData = function(szPoiId,sData){
-	var pkey = this.rediscl.pRedisKeys.key_poiid_data(szPoiId);
-	this.rediscl.setDataByKey(pkey,sData);
-}
-Handler.prototype.mycache_GetPoiData = function(szPoiId, funcCallback, pCallOwner) {
-	var self = this;
-	var pkey = self.rediscl.pRedisKeys.key_poiid_data(szPoiId);
-	self.rediscl.getDataByKey(pkey,1,function(sErr,sData){
-		if(sErr != null || sData == null){
-			var sFilter = "poiid:"+szPoiId;
-			self.databaseutil.yuntu_GetDataByFilter(self.databaseutil.sTable_t_poi,sFilter,function(nResult,sBody){
-				var szResult = "";
-				var pResult = {};
-				if(nResult == 1){
-					pResult = JSON.parse(sBody);
-					if (pResult.count == 1) {
-						// only one poi is ok
-						szResult = "success";
-						// cache this poi's value.
-						self.mycache_SetPoiData(szPoiId,sBody);
-					} else {
-						szResult = "failed";
-					}
-				} else {
-					szResult = "system error";
-				}
-				if (pCallOwner != null && funcCallback != null) {
-					funcCallback.call(pCallOwner, szResult, pResult);
-				} else if (funcCallback != null) {
-					funcCallback(szResult, pResult);
-				}
-			});	
-		} else {
-			// poi data in redis
-			var pResult = JSON.parse(sData);
-			if (pCallOwner != null && funcCallback != null) {
-				funcCallback.call(pCallOwner, "success", pResult);
-			} else if (funcCallback != null) {
-				funcCallback("success", pResult);
-			}
-		}
-	});
-}
 
-Handler.prototype.mycache_SetUserPois = function(nUserId,sData){
-	var sKey = this.rediscl.pRedisKeys.key_userid_pois(nUserId);
-	this.rediscl.setDataByKey(sKey,sData);
-}
-Handler.prototype.mycache_GetUserPois = function(nUserId, funcCallback, pCallOwner) {
-	var self = this;
-	// 强制从库中更新数据方法
-	var pfunForceUpdate = function(){
-		var sFilter = "ownerid:"+nUserId;
-		self.databaseutil.yuntu_GetDataByFilter(self.databaseutil.sTable_t_poi,sFilter,function(nResult,sBody){
-			var szResult = "";
-			var pResult = {};
-			console.log("again get user pois->",nResult,sBody);
-			if(nResult == 1){
-				pResult = JSON.parse(sBody);
-				szResult = "success";
-				self.mycache_SetUserPois(nUserId,sBody);
-			} else {
-				szResult = "system error";
-			}
-			if (pCallOwner != null && funcCallback != null) {
-				funcCallback.call(pCallOwner, szResult, pResult);
-			} else if (funcCallback != null) {
-				funcCallback(szResult, pResult);
-			}
-		});
-	};
-	// 得到数据。。
-	var pfunGetData = function(){
-		var sKey = self.rediscl.pRedisKeys.key_userid_pois(nUserId);
-		self.rediscl.getDataByKey(sKey,1,function(sErr,sData){
-			if(sErr != null || sData == null){
-				return pfunForceUpdate();
-			} else {
-				// data in redis
-				var pResult = JSON.parse(sData);
-				if (pCallOwner != null && funcCallback != null) {
-					funcCallback.call(pCallOwner, "success", pResult);
-				} else if (funcCallback != null) {
-					funcCallback("success", pResult);
-				}
-			}
-		});
-	};
-	
-	// 先检查是否要从库中更新
-	var sKeyDirty = self.rediscl.pRedisKeys.key_userid_pois_dirty(nUserId);
-	self.rediscl.getDataByKey(sKeyDirty,1,function(sErr,sData){
-		if(sErr != null || sData == null){
-			pfunGetData();
-		} else {
-			if(sData == "1"){
-				self.rediscl.setDataByKey(sKeyDirty,"0");
-				pfunForceUpdate();
-			} else {
-				pfunGetData();
-			}
-		}
-	});
-}
 
 Handler.prototype.mycache_SetUserData = function(szUserName,sData){
 	var sKey = this.rediscl.pRedisKeys.key_username_data(szUserName);
@@ -583,7 +443,7 @@ Handler.prototype.check_Register = function(msg,session,next) {
 	var self = this;
 
 	// first check has user name...
-	self.mycache_GetUserData(msg.username,function(szResult,pUserData){
+	self.cachemgr.UserData_GetByName(msg.username,1,function(szResult,pUserData){
 		if (szResult == "success") {
 			// already has this user,can't register
 			next(null, {
@@ -617,6 +477,8 @@ Handler.prototype.check_Register = function(msg,session,next) {
 						session.on('closed', self.onUserLeave.bind(null, self,msg.username));
 						session.pushAll();
 						
+						self.cachemgr.UserPois_Init(pResult._id);
+
 						next(null, {
 							code: 200,
 							account: msg.username,
@@ -678,7 +540,7 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 	var self = this;
 	
 	// get this user data
-	self.mycache_GetUserData(msg.username,function(szResult,pUserData){
+	self.cachemgr.UserData_GetByName(msg.username,1,function(szResult,pUserData){
 		if (szResult == "success") {
 			
 			var sStorePwd = self.commonutil.buildEndPassword(msg.username, msg.password);
@@ -724,6 +586,8 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 							// update redis data
 							pUserData.datas[0].loginkey = pInsertData.loginkey;
 							self.mycache_SetUserData(msg.username,JSON.stringify(pUserData));
+
+							self.cachemgr.UserPois_Init(pUserData.datas[0]._id);
 
 							// self.app.rpc.game.gameRemote.testMsg(session, msg.username, szAccKey, function(pdata){
 							// 	console.log("pdatapdatapdata",pdata);
@@ -777,7 +641,7 @@ Handler.prototype.get_UserData = function(msg, session, next) {
 		return;
 	}
 	var self = this;
-	self.mycache_GetUserData(msg.username,function(szResult,pUserData){
+	self.cachemgr.UserData_GetByName(msg.username,1,function(szResult,pUserData){
 		if (szResult == "success") {
 			if (msg.acckey != pUserData.datas[0].loginkey) {
 				next(null, {
@@ -809,7 +673,7 @@ Handler.prototype.get_UserPoiData = function(msg, session, next) {
 		return;
 	}
 	var self = this;
-	self.mycache_GetUserData(msg.username,function(szResult,pUserData){
+	self.cachemgr.UserData_GetByName(msg.username,1,function(szResult,pUserData){
 		if (szResult == "success") {
 			if (msg.acckey != pUserData.datas[0].loginkey) {
 				next(null, {code: 203,	msg: 'AccKey Is Error'});
@@ -817,7 +681,7 @@ Handler.prototype.get_UserPoiData = function(msg, session, next) {
 			}
 			
 			// find all poi by user id
-			self.mycache_GetUserPois(pUserData.datas[0]._id,function(szResult,pPoisData){
+			self.cachemgr.UserPois_Get(pUserData.datas[0]._id,1,function(szResult,pPoisData){
 				if (szResult == "success") {
 					var pSendObj = {};
 					pSendObj.count = pPoisData.count;
@@ -855,7 +719,7 @@ Handler.prototype.setBirthPosition = function(msg,session,next) {
 		return;
 	}
 	var self = this;
-	self.mycache_GetUserData(msg.username,function(szResult,pUserData){
+	self.cachemgr.UserData_GetByName(msg.username,1,function(szResult,pUserData){
 		if (szResult == "success") {
 			
 			if (msg.acckey != pUserData.datas[0].loginkey) {
@@ -923,7 +787,7 @@ Handler.prototype.teleportToPosition = function(msg,session,next) {
 	}
 	
 	var self = this;
-	self.mycache_GetUserData(msg.username,function(szResult,pUserData){
+	self.cachemgr.UserData_GetByName(msg.username,1,function(szResult,pUserData){
 		if (szResult == "success") {
 //  				console.log("msg->",msg)
 			if (msg.acckey != pUserData.datas[0].loginkey) {
@@ -999,7 +863,7 @@ Handler.prototype.getPoiData = function(msg,session,next) {
 	}
 	
 	var self = this;
-	self.mycache_GetUserData(msg.username,function(szResult,pUserData){
+	self.cachemgr.UserData_GetByName(msg.username,1,function(szResult,pUserData){
 		if (szResult == "success") {
 			if (msg.acckey != pUserData.datas[0].loginkey) {
 				next(null, {
@@ -1008,7 +872,7 @@ Handler.prototype.getPoiData = function(msg,session,next) {
 				});
 				return;
 			}
-			self.mycache_GetPoiData(msg.poiid,function(szResult,pPoiData){
+			self.cachemgr.PoiData_Get(msg.poiid,1,function(szResult,pPoiData){
 				var pExtData = {};
 				var sCurPoiTypeText = msg.poitypetext;
 				if(sCurPoiTypeText === ""){// poi 类型是空的时候
@@ -1048,7 +912,7 @@ Handler.prototype.getPoiData = function(msg,session,next) {
 
 							
 
-							self.mycache_GetDataByUserId(pPoiData.datas[0].ownerid,function(szResultOwner,pUserDataOwner){
+							self.cachemgr.UserData_GetById(pPoiData.datas[0].ownerid,1,function(szResultOwner,pUserDataOwner){
 // 								console.log("Get Owner Data Result:",szResultOwner,pUserDataOwner);
 								if (szResultOwner == "success") {
 									pOwnerData.name = pUserDataOwner.datas[0].account;
@@ -1119,7 +983,7 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 	}
 	
 	var self = this;
-	self.mycache_GetUserData(msg.username,function(szResult,pUserData){
+	self.cachemgr.UserData_GetByName(msg.username,1,function(szResult,pUserData){
 		if (szResult == "success") {
 			if (msg.acckey != pUserData.datas[0].loginkey) {
 				next(null, {
@@ -1129,7 +993,7 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 				return;
 			}
 			
-			self.mycache_GetPoiData(msg.poiid,function(szResult,pPoiData){
+			self.cachemgr.PoiData_Get(msg.poiid,1,function(szResult,pPoiData){
 				
 				if(szResult == "success"){// 有记录					
 					if(pPoiData.datas[0].ownerid > 0){// 是否有人占领
@@ -1213,9 +1077,10 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 												pPoiData.datas[0].monsterid = pUpdateData.monsterid;
 												pPoiData.datas[0].monsterlevel = pUpdateData.monsterlevel;
 												pPoiData.datas[0].monsterhp = pUpdateData.monsterhp;
-												self.mycache_SetPoiData(msg.poiid,JSON.stringify(pPoiData));
+												self.cachemgr.PoiData_Set(msg.poiid,JSON.stringify(pPoiData),1);
 												
 												// 标记user对应的pois数据有变化
+
 												var sKeyDirty = self.rediscl.pRedisKeys.key_userid_pois_dirty(pUserData.datas[0]._id);
 												self.rediscl.setDataByKey(sKeyDirty,"1");
 												
@@ -1260,11 +1125,14 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 													
 												} else {// 未记录的点
 													pPoiData = {};
+													pPoiData.count = 1;
 													pPoiData.datas = [];
 													pPoiData.datas[0] = {};
 												}
+												pPoiData.datas[0]._id = pResult._id;
+												pPoiData.datas[0].poiid = pInsertData.poiid;
 												pPoiData.datas[0].ownerid = pInsertData.ownerid;
-												pPoiData.datas[0]._name = msg.poiname;
+												pPoiData.datas[0]._name = pInsertData._name;
 												pPoiData.datas[0]._location = pInsertData._location;
 												pPoiData.datas[0].occupytime = pInsertData.occupytime;
 												pPoiData.datas[0].battleovertime = pInsertData.battleovertime;
@@ -1272,9 +1140,14 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 												pPoiData.datas[0].monsterid = pInsertData.monsterid;
 												pPoiData.datas[0].monsterlevel = pInsertData.monsterlevel;
 												pPoiData.datas[0].monsterhp = pInsertData.monsterhp;
-												self.mycache_SetPoiData(msg.poiid,JSON.stringify(pPoiData));
+												self.cachemgr.PoiData_Set(msg.poiid,JSON.stringify(pPoiData),1);
 												
 												// 标记user对应的pois数据有变化
+												self.cachemgr.UserPois_Get(pInsertData.ownerid,1,function(sResult, pResult, outExtData){
+													pResult.count ++;
+													pResult.datas[pResult.count-1] = JSON.parse(JSON.stringify(pPoiData.datas[0]));
+													self.cachemgr.UserPois_Set(pInsertData.ownerid,JSON.stringify(pResult));
+												});
 												var sKeyDirty = self.rediscl.pRedisKeys.key_userid_pois_dirty(pUserData.datas[0]._id);
 												self.rediscl.setDataByKey(sKeyDirty,"1");
 												
@@ -1343,7 +1216,7 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 		[
 			function(callback) {
 				console.log("1 check user right!!!");
-				self.mycache_GetUserData(msg.username,function(szResult,pUserData){
+				self.cachemgr.UserData_GetByName(msg.username,1,function(szResult,pUserData){
 					if (szResult != "success") {
 						console.log('Not Find User:->',msg.username);
 						return callback(203,'Not Find User');
@@ -1375,7 +1248,7 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 			},
 			function(pUserData, pUserBattleArray, callback) {
 				console.log("3 check dest poi data");
-				self.mycache_GetPoiData(msg.destpoiid,function(szResult,pDestPoiData){
+				self.cachemgr.PoiData_Get(msg.destpoiid,1,function(szResult,pDestPoiData){
 					if(szResult == "success"){// 有记录					
 						if(pDestPoiData.datas[0].ownerid > 0){// 有人占领
 							//检测是否自己的。
@@ -1404,7 +1277,7 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 				console.log("4 check source poi data!!!");
 				var pSourcePoiDatas = new Map();
 				for(var i = 0; i < msg.sourcepoiids.length; ++ i){
-					self.mycache_GetPoiData(msg.sourcepoiids[i],function(szResult,pSourcePoiData){
+					self.cachemgr.PoiData_Get(msg.sourcepoiids[i],1,function(szResult,pSourcePoiData){
 						if(szResult == "success"){// 有记录					
 							if(pSourcePoiData.datas[0].ownerid > 0){// 有人占领
 								//检测是否自己的。
@@ -1477,7 +1350,7 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 
 				// 1 目标点设置处于战斗状态。
 				pDestPoiData.datas[0].battlestatus = 1;// 目标点
-				self.mycache_SetPoiData(msg.destpoiid,JSON.stringify(pDestPoiData));
+				self.cachemgr.PoiData_Set(msg.destpoiid,JSON.stringify(pDestPoiData),1);
 				// 2 源点设置处于战斗状态。
 				pSourcePoiDatas.forEach(function(value, key, map){
 					value.datas[0].battlestatus = 2;// 源点
@@ -1485,7 +1358,7 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 						console.log("poi key is null",value);
 						return;
 					}
-					self.mycache_SetPoiData(key,JSON.stringify(value));
+					self.cachemgr.PoiData_Set(key,JSON.stringify(value),1);
 				});
 				// 3 缓存下这个战斗信息
 				var pBattleData = {};
@@ -1588,7 +1461,7 @@ Handler.prototype.req_getUserBattleData = function(msg,session,next) {
 		[
 			function(callback) {
 				console.log("1 check user right!!!");
-				self.mycache_GetUserData(msg.username,function(szResult,pUserData){
+				self.cachemgr.UserData_GetByName(msg.username,1,function(szResult,pUserData){
 					if (szResult != "success") {
 						console.log('Not Find User:->',msg.username);
 						return callback(202,'Not Find User');

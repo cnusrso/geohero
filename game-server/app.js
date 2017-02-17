@@ -43,6 +43,8 @@ function startmain(){
     myapp.set('_tableUtil',require('./app/utils/tableUtil'));
     myapp.set('_databaseUtil',require('./app/utils/databaseOp')());
     myapp.set('_directionUtil',require('./app/utils/directionOp')());
+
+    myapp.set('_cachemgr',require('./app/manager/cachemgr')(myapp));
   });
 
   if(bMultiServer){
@@ -59,6 +61,8 @@ function startmain(){
       myapp.set('_databaseUtil',require('./app/utils/databaseOp')());
       myapp.set('_directionUtil',require('./app/utils/directionOp')());
 
+
+      myapp.set('_cachemgr',require('./app/manager/cachemgr')(myapp));
     });
   }
   
