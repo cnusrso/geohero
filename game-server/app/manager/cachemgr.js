@@ -175,7 +175,7 @@ cachemgr.UserData_UpdateOneToDB = function(self){
 					console.log("update user data err status",pResult.status)
 					return;
 				}
-				console.log("success cache one user data to db->",pOneDirtyPoiId);
+				console.log("success cache one user data to db->",pOneDirtyAccount);
 			});
 
 		});

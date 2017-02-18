@@ -285,135 +285,6 @@ Handler.prototype.loopfunc_updateBattle = function(data){
 };
 
 
-// warp self cache function ...........................................................
-
-
-Handler.prototype.mycache_SetUserData = function(szUserName,sData){
-	var sKey = this.rediscl.pRedisKeys.key_username_data(szUserName);
-	this.rediscl.setDataByKey(sKey,sData);
-}
-Handler.prototype.mycache_GetUserData = function(szUserName, funcCallback, pCallOwner) {
-	var self = this;
-	var sKey = self.rediscl.pRedisKeys.key_username_data(szUserName);
-	self.rediscl.getDataByKey(sKey,1,function(sErr,sData){
-		if(sErr != null || sData == null){
-			// user not in redis,get it from db
-			var sFilter = "account:"+szUserName;
-			self.databaseutil.yuntu_GetDataByFilter(self.databaseutil.sTable_t_account,sFilter,function(nResult,sBody){
-				var szResult = "";
-				var pResult = {};
-				if(nResult == 1){
-					pResult = JSON.parse(sBody);
-					if (pResult.count == 1) {
-						// only one account is ok
-						szResult = "success";
-						// cache this user's value.
-						self.mycache_SetUserData(szUserName,sBody);
-					} else {
-						szResult = "failed";
-					}
-				} else {
-					szResult = "system error";
-				}
-				if (pCallOwner != null && funcCallback != null) {
-					funcCallback.call(pCallOwner, szResult, pResult);
-				} else if (funcCallback != null) {
-					funcCallback(szResult, pResult);
-				}
-			});
-		}	else {
-			// user in redis ...
-			var pResult = JSON.parse(sData);
-			if (pCallOwner != null && funcCallback != null) {
-				funcCallback.call(pCallOwner, "success", pResult);
-			} else if (funcCallback != null) {
-				funcCallback("success", pResult);
-			}
-		}
-	});
-}
-
-Handler.prototype.mycache_SetDataByUserId = function(nId, sData){
-	var sKey = this.rediscl.pRedisKeys.key_userid_data(nId);
-	this.rediscl.setDataByKey(sKey,sData);
-}
-Handler.prototype.mycache_GetDataByUserId = function(nId, funcCallback, pCallOwner) {
-	var self = this;
-	var sKey = self.rediscl.pRedisKeys.key_userid_data(nId);
-	self.rediscl.getDataByKey(sKey,1,function(sErr,sData){
-		if(sErr != null || sData == null){
-			// user not in redis,get it from db
-			var sFilter = "_id:"+nId;
-			self.databaseutil.yuntu_GetDataByFilter(self.databaseutil.sTable_t_account,sFilter,function(nResult,sBody){
-				var szResult = "";
-				var pResult = {};
-				if(nResult == 1){
-					pResult = JSON.parse(sBody);
-					if (pResult.count == 1) {
-						// only one account is ok
-						szResult = "success";
-						// cache this user's value.
-						self.mycache_SetDataByUserId(nId,sBody);
-					} else {
-						szResult = "failed";
-					}
-				} else {
-					szResult = "system error";
-				}
-				if (pCallOwner != null && funcCallback != null) {
-					funcCallback.call(pCallOwner, szResult, pResult);
-				} else if (funcCallback != null) {
-					funcCallback(szResult, pResult);
-				}
-			});
-		}	else {
-			// user in redis ...
-			var pResult = JSON.parse(sData);
-			if (pCallOwner != null && funcCallback != null) {
-				funcCallback.call(pCallOwner, "success", pResult);
-			} else if (funcCallback != null) {
-				funcCallback("success", pResult);
-			}
-		}
-	});
-}
-
-Handler.prototype.mycache_SetExtDataByPoiTypeText = function(typetext, sData){
-	var sKey = this.rediscl.pRedisKeys.key_poitypetext_extdata(typetext);
-	this.rediscl.setDataByKey(sKey,sData);
-}
-Handler.prototype.mycache_GetExtDataByPoiTypeText = function(typetext, funcCallback, pCallOwner) {
-	var self = this;
-	var sKey = self.rediscl.pRedisKeys.key_poitypetext_extdata(typetext);
-	self.rediscl.getDataByKey(sKey,1,function(sErr,sData){
-		var pExtData = {};
-		var szResult = "";
-		if(sErr != null || sData == null){
-			var nBaseIndex = self.tableutil.getBaseIndexByTypeText(typetext);
-			var nBaseCost = self.tableutil.getBaseCostByIndex(nBaseIndex);
-			pExtData.basetypeindex = nBaseIndex;
-			pExtData.basecost = nBaseCost;
-			var pMonsterNames = self.tableutil.getMaybeMonsterNamesByBaseIndex(pExtData.basetypeindex);
-			pExtData.monstername = pMonsterNames;
-
-			// 以类型名和类型ID缓存表数据
-			self.mycache_SetExtDataByPoiTypeText(typetext,JSON.stringify(pExtData));
-			szResult = "success";
-		}else{
-			pExtData = JSON.parse(sData);
-			szResult = "success";
-		}
-		
-		if (pCallOwner != null && funcCallback != null) {
-			funcCallback.call(pCallOwner, szResult, pExtData);
-		} else if (funcCallback != null) {
-			funcCallback(szResult, pExtData);
-		}
-	});
-}
-// end warp self cache function ...........................................................
-
-
 /*
 	return: 
 	code	msg
@@ -585,7 +456,7 @@ Handler.prototype.check_SignIn = function(msg, session, next) {
 							});
 							// update redis data
 							pUserData.datas[0].loginkey = pInsertData.loginkey;
-							self.mycache_SetUserData(msg.username,JSON.stringify(pUserData));
+							self.cachemgr.UserData_SetByName(msg.username,JSON.stringify(pUserData),1);
 
 							self.cachemgr.UserPois_Init(pUserData.datas[0]._id);
 
@@ -749,7 +620,7 @@ Handler.prototype.setBirthPosition = function(msg,session,next) {
 						// update redis data
 						pUserData.datas[0]._name = pInsertData._name;
 						pUserData.datas[0]._location = pInsertData._location;
-						self.mycache_SetUserData(msg.username, JSON.stringify(pUserData));
+						self.cachemgr.UserData_SetByName(msg.username, JSON.stringify(pUserData),1);
 					} else {
 						next(null, {
 							code: 204,
@@ -819,7 +690,7 @@ Handler.prototype.teleportToPosition = function(msg,session,next) {
 						// update user in redis.
 						pUserData.datas[0]._name = pInsertData._name;
 						pUserData.datas[0]._location = pInsertData._location;
-						self.mycache_SetUserData(msg.username,JSON.stringify(pUserData));
+						self.cachemgr.UserData_SetByName(msg.username,JSON.stringify(pUserData),1);
 					} else {
 						next(null, {
 							code: 204,
@@ -1022,7 +893,7 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 					// 更新内存数据
 					var pNewMoney = pUserData.datas[0].money-pExtData.basecost;
 					pUserData.datas[0].money = pNewMoney;
-					self.mycache_SetUserData(msg.username,JSON.stringify(pUserData));
+					self.cachemgr.UserData_SetByName(msg.username,JSON.stringify(pUserData),1);
 					
 					// 更新用户的钱入库
 					var pInsertData = {
