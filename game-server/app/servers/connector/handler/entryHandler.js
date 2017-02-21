@@ -26,6 +26,17 @@ var Handler = function(app) {
 
   this.cachemgr = app.get('_cachemgr');
 
+
+  if(this.pScheduleJobId <= 0){
+		this.pScheduleJobId = myScheduler.scheduleJob({
+			start:Date.now(), 
+			period:1000
+			}, 
+			this.loopfunc_main, 
+			{owner: this}
+		);
+	}
+
   //edit by ipad
 };
 
@@ -80,6 +91,20 @@ Handler.prototype.func_PushMsgToClient = function(nUserId,sMsgId,pMsgData){
 	});
 };
 
+Handler.prototype.loopfunc_main = function(data){
+	var self = data.owner;
+
+	self.loopfunc_updateBattle(data);
+
+};
+
+Handler.prototype.loopfunc_updatePOI = function(data){
+	var self = data.owner;
+
+	
+	
+
+};
 
 // check battle status...
 Handler.prototype.loopfunc_updateBattle = function(data){
@@ -1288,15 +1313,7 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 					self.pScheduleUserIds[nFindIndex][1] = 0;
 				}
 
-				if(self.pScheduleJobId <= 0){
-					self.pScheduleJobId = myScheduler.scheduleJob({
-						start:Date.now(), 
-						period:3000
-						}, 
-						self.loopfunc_updateBattle, 
-						{owner: self}
-					);
-				}
+				
 				
 				// 回应客户端。。。包含当前这个战斗的数据
 				return callback(null, JSON.stringify(pBattleData));
