@@ -26,6 +26,18 @@ var CacheMgr = function(app) {
 	this.pCacheKeys = {
 		set_all_dirty_poi:function(){return "all:dirty:poi";},
 		set_all_dirty_account:function(){return "all:dirty:account";},
+		
+		key_poiid_data:function(poiid){return "poiid:"+poiid.toString()+":data"},
+		key_poitypeid_extdata:function(typeid){return "poitypeid:"+typeid.toString()+":extdata"},
+		key_poitypetext_extdata:function(typetext){return "poitypetext:"+typetext.toString()+":extdata"},
+		
+		key_userid_pois:function(userid){return "userid:"+userid.toString()+":pois";},
+		key_userid_pois_dirty:function(userid){return "userid:"+userid.toString()+":pois:dirty";},
+		key_userid_data:function(userid){return "userid:"+userid.toString()+":data"},
+		key_username_data:function(name){return "username:"+name+":data"},	
+		
+		key_userid_poiid_battle:function(userid,destpoiid){return "userid:"+userid.toString()+":poiid:"+destpoiid.toString()+":battle"},
+		key_userid_battlekey:function(userid){return "userid:"+userid.toString()+":battlekey"},
 	};
 
 
@@ -42,7 +54,7 @@ cachemgr.loopfunc_DoDirtyData = function(data){
 };
 
 cachemgr.UserData_SetByName = function(sName,sData,nDirty){
-	var sKey = this.rediscl.pRedisKeys.key_username_data(sName);
+	var sKey = this.pCacheKeys.key_username_data(sName);
 	this.rediscl.setDataByKey(sKey,sData);
 
 	if(nDirty != null){
@@ -51,12 +63,12 @@ cachemgr.UserData_SetByName = function(sName,sData,nDirty){
 	}
 };
 cachemgr.UserData_SetById = function(sId,sData){
-	var sKey = this.rediscl.pRedisKeys.key_userid_data(sId);
+	var sKey = this.pCacheKeys.key_userid_data(sId);
 	this.rediscl.setDataByKey(sKey,sData);
 };
 cachemgr.UserData_GetByName = function(szUserName, pInExtData, funcCallback, pCallOwner) {
 	var self = this;
-	var sKey = self.rediscl.pRedisKeys.key_username_data(szUserName);
+	var sKey = self.pCacheKeys.key_username_data(szUserName);
 	self.rediscl.getDataByKey(sKey,pInExtData,function(sErr,sData,outExtData){
 		if(sErr != null || sData == null){
 			// user not in redis,get it from db
@@ -97,7 +109,7 @@ cachemgr.UserData_GetByName = function(szUserName, pInExtData, funcCallback, pCa
 };
 cachemgr.UserData_GetById = function(szUserId, pInExtData, funcCallback, pCallOwner) {
 	var self = this;
-	var sKey = self.rediscl.pRedisKeys.key_userid_data(szUserId);
+	var sKey = self.pCacheKeys.key_userid_data(szUserId);
 	self.rediscl.getDataByKey(sKey,pInExtData,function(sErr,sData,outExtData){
 		if(sErr != null || sData == null){
 			// user not in redis,get it from db
@@ -184,7 +196,7 @@ cachemgr.UserData_UpdateOneToDB = function(self){
 };
 
 cachemgr.PoiData_Set = function(szPoiId,sData,nDirty){
-	var pkey = this.rediscl.pRedisKeys.key_poiid_data(szPoiId);
+	var pkey = this.pCacheKeys.key_poiid_data(szPoiId);
 	this.rediscl.setDataByKey(pkey,sData);
 
 	if(nDirty != null){
@@ -194,7 +206,7 @@ cachemgr.PoiData_Set = function(szPoiId,sData,nDirty){
 };
 cachemgr.PoiData_Get = function(szPoiId, pInExtData, funcCallback, pCallOwner){
 	var self = this;
-	var pkey = self.rediscl.pRedisKeys.key_poiid_data(szPoiId);
+	var pkey = self.pCacheKeys.key_poiid_data(szPoiId);
 	self.rediscl.getDataByKey(pkey,pInExtData,function(sErr,sData,outExtData){
 		if(sErr != null || sData == null){
 			var sFilter = "poiid:"+szPoiId;
@@ -298,12 +310,12 @@ cachemgr.UserPois_Init = function(nUserId){
 	});
 };
 cachemgr.UserPois_Set = function(nUserId,sData){
-	var sKey = this.rediscl.pRedisKeys.key_userid_pois(nUserId);
+	var sKey = this.pCacheKeys.key_userid_pois(nUserId);
 	this.rediscl.setDataByKey(sKey,sData);
 };
 cachemgr.UserPois_Get = function(nUserId, pInExtData, funcCallback, pCallOwner) {
 	var self = this;
-	var sKey = self.rediscl.pRedisKeys.key_userid_pois(nUserId);
+	var sKey = self.pCacheKeys.key_userid_pois(nUserId);
 	self.rediscl.getDataByKey(sKey,pInExtData,function(sErr,sData,outExtData){
 		var sResult = "";
 		var pResult = {};
