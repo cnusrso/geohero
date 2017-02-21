@@ -16,28 +16,6 @@ var Handler = function(app) {
 	    console.log(app.getServerId()+" redis client Error " + err);
 	});
 
-	this.pRedisKeys = {
-	  	key_poiid_data:function(poiid){return "poiid:"+poiid.toString()+":data"},
-		key_poitypeid_extdata:function(typeid){return "poitypeid:"+typeid.toString()+":extdata"},
-		key_poitypetext_extdata:function(typetext){return "poitypetext:"+typetext.toString()+":extdata"},
-		
-		key_userid_pois:function(userid){return "userid:"+userid.toString()+":pois";},
-		key_userid_pois_dirty:function(userid){return "userid:"+userid.toString()+":pois:dirty";},
-		key_userid_data:function(userid){return "userid:"+userid.toString()+":data"},
-		key_username_data:function(name){return "username:"+name+":data"},	
-		
-		key_userid_poiid_battle:function(userid,destpoiid){return "userid:"+userid.toString()+":poiid:"+destpoiid.toString()+":battle"},
-		key_userid_battlekey:function(userid){return "userid:"+userid.toString()+":battlekey"},
-	};
-
-	this.pRedisListKeys = {
-		list_key_all_dirty_poiid:function(){return "all:dirty:poiid";},
-		list_key_poiid_dirty:function(poiid){return "poiid:"+poiid.toString()+":poidatadirty";},
-	};
-
-	this.pRedisSetKeys = {
-		set_key_all_dirty_poiid:function(){return "all:dirty:poiid";},
-	};
 
 	// this.myrediscl.sadd("myset","aaaaa");
 	// this.myrediscl.sadd("myset","bbbbb");

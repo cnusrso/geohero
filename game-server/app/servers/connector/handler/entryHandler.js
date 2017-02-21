@@ -94,7 +94,7 @@ Handler.prototype.loopfunc_updateBattle = function(data){
 		}
 
 		// read one player's battle data.
-		var pKey_userid2battlekey = self.rediscl.pRedisKeys.key_userid_battlekey(self.pScheduleUserIds[i][0]);
+		var pKey_userid2battlekey = self.cachemgr.pCacheKeys.key_userid_battlekey(self.pScheduleUserIds[i][0]);
 		self.rediscl.getDataByKey(pKey_userid2battlekey,i,function(sErr,sData,index){
 			if(sErr != null || sData == null){
 				// user id no battle data,make invalid.
@@ -749,7 +749,7 @@ Handler.prototype.getPoiData = function(msg,session,next) {
 				if(sCurPoiTypeText === ""){// poi 类型是空的时候
 					sCurPoiTypeText = "null";
 				}
-				var key1 = self.rediscl.pRedisKeys.key_poitypetext_extdata(encodeURI(sCurPoiTypeText));
+				var key1 = self.cachemgr.pCacheKeys.key_poitypetext_extdata(encodeURI(sCurPoiTypeText));
 				self.rediscl.getDataByKey(key1,0,function(sErr,sData){
 					if(sErr != null || sData == null){
 						var nBaseIndex = self.tableutil.getBaseIndexByTypeText(sCurPoiTypeText);
@@ -761,7 +761,7 @@ Handler.prototype.getPoiData = function(msg,session,next) {
 						
 						// 以类型名和类型ID缓存表数据
 						self.rediscl.setDataByKey(key1,JSON.stringify(pExtData));
-						var key2 = self.rediscl.pRedisKeys.key_poitypeid_extdata(nBaseIndex);
+						var key2 = self.cachemgr.pCacheKeys.key_poitypeid_extdata(nBaseIndex);
 						self.rediscl.setDataByKey(key2,JSON.stringify(pExtData));
 					}else{
 						pExtData = JSON.parse(sData);
@@ -876,7 +876,7 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 				}
 				// find poi type by poi id
 // 				var key_poitypeid = toString(msg.poitypeid)+"_data";
-				var key1 = self.rediscl.pRedisKeys.key_poitypeid_extdata(msg.poitypeid);
+				var key1 = self.cachemgr.pCacheKeys.key_poitypeid_extdata(msg.poitypeid);
 				self.rediscl.getDataByKey(key1,0,function(sErr,sData){
 					var pExtData = {};
 					if(sErr != null || sData == null){
@@ -952,7 +952,7 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 												
 												// 标记user对应的pois数据有变化
 
-												var sKeyDirty = self.rediscl.pRedisKeys.key_userid_pois_dirty(pUserData.datas[0]._id);
+												var sKeyDirty = self.cachemgr.pCacheKeys.key_userid_pois_dirty(pUserData.datas[0]._id);
 												self.rediscl.setDataByKey(sKeyDirty,"1");
 												
 											} else {
@@ -1019,7 +1019,7 @@ Handler.prototype.occupyEmptyBase = function(msg,session,next) {
 													pResult.datas[pResult.count-1] = JSON.parse(JSON.stringify(pPoiData.datas[0]));
 													self.cachemgr.UserPois_Set(pInsertData.ownerid,JSON.stringify(pResult));
 												});
-												var sKeyDirty = self.rediscl.pRedisKeys.key_userid_pois_dirty(pUserData.datas[0]._id);
+												var sKeyDirty = self.cachemgr.pCacheKeys.key_userid_pois_dirty(pUserData.datas[0]._id);
 												self.rediscl.setDataByKey(sKeyDirty,"1");
 												
 											} else {
@@ -1103,7 +1103,7 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 			function(pUserData, callback) {
 				console.log("2 get users battle data");
 				var pUserBattleArray = [];
-				var pKey_userid2battlekey = self.rediscl.pRedisKeys.key_userid_battlekey(pUserData.datas[0]._id);
+				var pKey_userid2battlekey = self.cachemgr.pCacheKeys.key_userid_battlekey(pUserData.datas[0]._id);
 				self.rediscl.getDataByKey(pKey_userid2battlekey,0,function(sErr,sData){
 					if(sErr != null || sData == null){
 						// 无数据
@@ -1251,7 +1251,7 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 				pBattleData.begintime = self.commonutil.getDateTimeNumber();
 // 				console.log("pUserData->",pUserData);
 // 				console.log("pDestPoiData->",pDestPoiData);
-				var pKey_OneBattle = self.rediscl.pRedisKeys.key_userid_poiid_battle(pUserData.datas[0]._id,pDestPoiData.datas[0]._id);
+				var pKey_OneBattle = self.cachemgr.pCacheKeys.key_userid_poiid_battle(pUserData.datas[0]._id,pDestPoiData.datas[0]._id);
 				self.rediscl.setDataByKey(pKey_OneBattle,JSON.stringify(pBattleData));
 				
 				// 4 缓存userid对应战斗key
@@ -1265,7 +1265,7 @@ Handler.prototype.req_readyAttackBase = function(msg,session,next) {
 				if(bHasInsert == false){
 					pUserBattleArray.push(pKey_OneBattle);
 					var pSendData = JSON.stringify(pUserBattleArray);
-					var pKey_userid2battlekey = self.rediscl.pRedisKeys.key_userid_battlekey(pUserData.datas[0]._id);
+					var pKey_userid2battlekey = self.cachemgr.pCacheKeys.key_userid_battlekey(pUserData.datas[0]._id);
 					self.rediscl.setDataByKey(pKey_userid2battlekey,pSendData);
 				}
 				
@@ -1348,7 +1348,7 @@ Handler.prototype.req_getUserBattleData = function(msg,session,next) {
 			function(pUserData, callback) {
 				console.log("2 get users battle key");
 				var pUserBattleKeyArray = [];
-				var pKey_userid2battlekey = self.rediscl.pRedisKeys.key_userid_battlekey(pUserData.datas[0]._id);
+				var pKey_userid2battlekey = self.cachemgr.pCacheKeys.key_userid_battlekey(pUserData.datas[0]._id);
 				self.rediscl.getDataByKey(pKey_userid2battlekey,0,function(sErr,sData){
 					if(sErr != null || sData == null){
 						// 无数据
