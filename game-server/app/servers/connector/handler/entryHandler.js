@@ -7,7 +7,6 @@ var myasync = require("async");
 
 
 
-
 // AWS.config.loadFromPath('./config/aws-config_testuser1.json');
 // var dynamodb = new AWS.DynamoDB();
 
@@ -27,6 +26,10 @@ var Handler = function(app) {
   this.cachemgr = app.get('_cachemgr');
 
 
+  var strCurPath = this.app.getBase();
+  this.mytools = require(strCurPath+'/../shared/public/tools');
+
+
   if(this.pScheduleJobId <= 0){
 		this.pScheduleJobId = myScheduler.scheduleJob({
 			start:Date.now(), 
@@ -37,6 +40,7 @@ var Handler = function(app) {
 		);
 	}
 
+	
   //edit by ipad
 };
 
